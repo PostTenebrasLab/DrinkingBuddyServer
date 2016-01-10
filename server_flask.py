@@ -57,7 +57,7 @@ def sync():
 @app.route("/drinks/api/buy", methods=['POST'])
 def buy():
     """ buy request
-
+    
 
     :return: JSON request tous les capteurs de la classe
     """
@@ -65,12 +65,19 @@ def buy():
 
     now = round(time.time()/60)
 
-    badge = request.form['Badge']
-    product = request.form['Product']
-    time_req = request.form['Time']
-    hash_req = request.form['Hash']
+#    if request._headers['Content-Type'] == 'application/json':
+    dict_req = request.get_json()
 
-    print(badge + product + time_req + hash_req)
+    badge = dict_req['Badge']
+    product = dict_req['Product']
+    time_req = dict_req['Time']
+    hash_req = dict_req['Hash']
+
+    print(badge + " " + product + " " + time_req + " " + hash_req)
+
+# TODO : verify incoming hash
+
+# TODO : compute proper outgoig hash
 
     hash_str =  now.__str__()
     for c in hash_str:
