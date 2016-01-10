@@ -13,6 +13,8 @@ from flask import Flask, request, jsonify, Response
 import json
 import datetime
 import time
+import siphash
+import binascii
 
 __author__ = 'Sebastien Chassot'
 __author_email__ = 'seba.ptl@sinux.net'
@@ -24,10 +26,7 @@ __status__ = ""
 
 
 
-#eng = create_engine("sqlite:////.db")
-#conn = eng.connect()
-#Session = sessionmaker(bind=eng)
-#session = Session()
+key = b'0123456789ABCDEF'
 
 app = Flask(__name__)
 
@@ -39,30 +38,54 @@ def sync():
 
     :return: JSON request tous les capteurs de la classe
     """
-    header = "Hello World"
-    t = round(time.time())
-    catalog = ['Coca 1.50' , 'Sprite 1.50'] 
-    h = header
-    for i in catalog:
-        h += i
-    h += t
-    for t in h:
-        update.hash(t)
+    sip = siphash.SipHash_2_4(key)
 
-    request = {'Header': "Hello World", 'Products': catalog, 'Time': round(time.time()), 'Hash': hash('blabla')}
+    now = round(time.time()/60)
+    catalog = ['Coca 1.50' , 'Sprite 1.50'] 
+
+    request = {'Header': "Hello World", 'Products': catalog, 'Time': now}
+
+    hash_str = request['Header'] + "".join(catalog) + now.__str__()
+    for c in hash_str:
+        sip.update(binascii.a2b_qp(c))
+
+    request['Hash'] = hex(sip.hash())[2:].upper()
     
-    return json.dumps(request, sort_keys=True)
+    return json.dumps(request)
 
 
 @app.route("/drinks/api/buy", methods=['POST'])
 def buy():
     """ buy request
-
+    
 
     :return: JSON request tous les capteurs de la classe
     """
+    sip = siphash.SipHash_2_4(key)
 
-    return json.dumps(res, sort_keys=True)
+    now = round(time.time()/60)
+#    if request._headers['Content-Type'] == 'application/json':
+    dict_req = request.get_json()
+
+    badge = dict_req['Badge']
+    product = dict_req['Product']
+    time_req = dict_req['Time']
+    hash_req = dict_req['Hash']
+
+    print(badge + " " + product + " " + time_req + " " + hash_req)
+
+# TODO : verify incoming hash
+
+# TODO : compute proper outgoig hash
+    hash_str =  now.__str__()
+    for c in hash_str:
+        sip.update(binascii.a2b_qp(c))
+
+    ret = {'Melody': "Une melody", 'Message': ['message1', 'message2'], 'Time': now}
+    
+    ret['Hash'] = hex(sip.hash())[2:].upper()
+
+    return json.dumps(ret)
 
 
 if __name__ == "__main__":
@@ -70,4 +93,3 @@ if __name__ == "__main__":
         host='0.0.0.0',
         port=int('5000')
     )
-
