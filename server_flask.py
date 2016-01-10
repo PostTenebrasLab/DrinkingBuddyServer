@@ -28,6 +28,8 @@ __status__ = ""
 
 key = b'0123456789ABCDEF'
 
+key = b'0123456789ABCDEF'
+
 app = Flask(__name__)
 
 
