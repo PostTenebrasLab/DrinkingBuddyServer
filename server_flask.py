@@ -26,13 +26,7 @@ __status__ = ""
 
 
 
-#eng = create_engine("sqlite:////.db")
-#conn = eng.connect()
-#Session = sessionmaker(bind=eng)
-#session = Session()
-
 key = b'0123456789ABCDEF'
-sip = siphash.SipHash_2_4(key)
 
 app = Flask(__name__)
 
@@ -44,13 +38,18 @@ def sync():
 
     :return: JSON request tous les capteurs de la classe
     """
+    sip = siphash.SipHash_2_4(key)
+
     now = round(time.time()/60)
     catalog = ['Coca 1.50' , 'Sprite 1.50'] 
 
     request = {'Header': "Hello World", 'Products': catalog, 'Time': now}
 
     hash_str = request['Header'] + "".join(catalog) + now.__str__()
-    request['Hash'] = sip.hash()
+    for c in hash_str:
+        sip.update(binascii.a2b_qp(c))
+
+    request['Hash'] = hex(sip.hash())[2:].upper()
     
     return json.dumps(request)
 
@@ -62,8 +61,26 @@ def buy():
 
     :return: JSON request tous les capteurs de la classe
     """
+    sip = siphash.SipHash_2_4(key)
 
-    return json.dumps(res, sort_keys=True)
+    now = round(time.time()/60)
+
+    badge = request.form['Badge']
+    product = request.form['Product']
+    time_req = request.form['Time']
+    hash_req = request.form['Hash']
+
+    print(badge + product + time_req + hash_req)
+
+    hash_str =  now.__str__()
+    for c in hash_str:
+        sip.update(binascii.a2b_qp(c))
+
+    ret = {'Melody': "Une melody", 'Message': ['message1', 'message2'], 'Time': now}
+    
+    ret['Hash'] = hex(sip.hash())[2:].upper()
+
+    return json.dumps(ret)
 
 
 if __name__ == "__main__":
