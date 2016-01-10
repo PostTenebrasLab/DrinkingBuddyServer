@@ -13,6 +13,8 @@ from flask import Flask, request, jsonify, Response
 import json
 import datetime
 import time
+import siphash
+import binascii
 
 __author__ = 'Sebastien Chassot'
 __author_email__ = 'seba.ptl@sinux.net'
@@ -29,6 +31,9 @@ __status__ = ""
 #Session = sessionmaker(bind=eng)
 #session = Session()
 
+key = b'0123456789ABCDEF'
+sip = siphash.SipHash_2_4(key)
+
 app = Flask(__name__)
 
 
@@ -39,19 +44,15 @@ def sync():
 
     :return: JSON request tous les capteurs de la classe
     """
-    header = "Hello World"
-    t = round(time.time())
+    now = round(time.time()/60)
     catalog = ['Coca 1.50' , 'Sprite 1.50'] 
-    h = header
-    for i in catalog:
-        h += i
-    h += t
-    for t in h:
-        update.hash(t)
 
-    request = {'Header': "Hello World", 'Products': catalog, 'Time': round(time.time()), 'Hash': hash('blabla')}
+    request = {'Header': "Hello World", 'Products': catalog, 'Time': now}
+
+    hash_str = request['Header'] + "".join(catalog) + now.__str__()
+    request['Hash'] = sip.hash()
     
-    return json.dumps(request, sort_keys=True)
+    return json.dumps(request)
 
 
 @app.route("/drinks/api/buy", methods=['POST'])
@@ -70,4 +71,3 @@ if __name__ == "__main__":
         host='0.0.0.0',
         port=int('5000')
     )
-
