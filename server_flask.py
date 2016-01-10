@@ -38,8 +38,6 @@ DBSession = sessionmaker(bind=engine)
 session = DBSession()
 
 
-key = b'0123456789ABCDEF'
-
 app = Flask(__name__)
 
 
@@ -142,6 +140,7 @@ def getBalance():
         messages = ['Unknown User', '0.00']
     else:
         messages = [element.one().name, "{:.2f}".format(element.one().balance/100)]
+
 
     ret = {'Melody': "Une melody", 'Message': messages, 'Time': now}
     

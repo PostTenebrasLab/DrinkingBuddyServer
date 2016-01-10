@@ -36,9 +36,17 @@ mydate = datetime.datetime.now();
 
 elements = session.query(Inventory, Inventory.name, Inventory.price).all()
 
+catalog = []
 for e in elements:
-    print(e.name, e.price/100)
+    catalog.append(e.name + " " + "{:.2f}".format(e.price/100))
 
+print(catalog)
 
+badgeId = 383297070 
+element = session.query(User, User.name, User.balance).filter(User.id == badgeId)
+if element.count() == 0:
+    messages = ['Unknown User', 0]
+else:
+    messages = [element.one().name, "{:.2f}".format(element.one().balance/100)]
 
-
+print(messages)
