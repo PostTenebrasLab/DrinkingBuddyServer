@@ -97,7 +97,7 @@ def buy():
     session.add(new_transaction)
     session.commit()
 
-    ret = {'Melody': "Une melody", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
+    ret = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
     
     hash_str = ret['Melody'] + "".join(ret['Message']) + now.__str__()
     for c in hash_str:
@@ -138,11 +138,11 @@ def getBalance():
     element = session.query(User, User.name, User.balance).filter(User.id == badgeId)
     if element.count() == 0:
         messages = ['Unknown User', '0.00']
+        ret = {'Melody': "c5", 'Message': messages, 'Time': now}
     else:
         messages = [element.one().name, "{:.2f}".format(element.one().balance/100)]
-
-
-    ret = {'Melody': "Une melody", 'Message': messages, 'Time': now}
+        ret = {'Melody': "a1c1a1c1a1c1a1c1", 'Message': messages, 'Time': now}
+    
     
     hash_str = ret['Melody'] + "".join(messages) + now.__str__()
     for c in hash_str:
