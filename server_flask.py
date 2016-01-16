@@ -29,6 +29,8 @@ __copyright__ = ""
 __licence__ = "GPL"
 __status__ = ""
 
+key = b'0123456789ABCDEF'
+
 engine = create_engine('sqlite:///drinkingBuddy.db')
 
 Base.metadata.bind = engine
@@ -51,9 +53,8 @@ def sync():
     sip = siphash.SipHash_2_4(key)
 
     now = round(time.time()/60)
-    elements = session.query(Inventory, Inventory.name, Inventory.price).all()
+    elements = session.query(Inventory, Inventory.name, Inventory.price).filter(Inventory.quantity > 0).all()
     catalog = [e.name + " " + "{:.2f}".format(e.price/100) for e in elements]
-
     request = {'Header': "DrinkingBuddy", 'Products': catalog, 'Time': now}
 
     hash_str = request['Header'] + "".join(catalog) + now.__str__()
@@ -93,11 +94,26 @@ def buy():
         print("Pas Cool !!!!!!!!!!")
     print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
 
-    new_transaction = Transaction(date = datetime.datetime.now(), value = 1, user = session.query(User).filter(User.id == int(badge,16)).one(), element = session.query(Inventory).filter(Inventory.id == int(product)).one())
-    session.add(new_transaction)
-    session.commit()
+    currentUser = session.query(User).filter(User.id == int(badge,16)).one()
+    currentItem = session.query(Inventory).filter(Inventory.id == int(product)).one()
 
-    ret = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
+    currentUser.balance = currentUser.balance - currentItem.price
+    currentItem.quantity = currentItem.quantity - 1
+    ret = []
+    if(currentItem.quantity < 0):
+        session.rollback()
+        print('product not in stock anymore')
+        ret = {'Melody': "sad melody", 'Message': ['Product not in stock anymore', 'Please choose something else'], 'Time': now.__str__()}
+    elif(currentUser.balance < 0):
+        session.rollback()
+        print('not enough money in the account!')
+        ret = {'Melody': "sad melody", 'Message': ['Not enough money in the account!', 'Get Rich or Die Trying'], 'Time': now.__str__()}
+    else:
+        session.commit()
+        print([currentUser.name, "{:.2f}".format(currentUser.balance/100)])
+        new_transaction = Transaction(date = datetime.datetime.now(), value = 1, user = currentUser, element = currentItem)
+        session.add(new_transaction)
+        ret = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
     
     hash_str = ret['Melody'] + "".join(ret['Message']) + now.__str__()
     for c in hash_str:
