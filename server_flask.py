@@ -14,6 +14,7 @@ import os
 import sys
 import datetime
 from flask import Flask, request, jsonify, Response
+from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
@@ -41,7 +42,7 @@ session = DBSession()
 
 
 app = Flask(__name__)
-
+api = Api(app)
 
 @app.route("/DrinkingBuddy/sync", methods=['GET'])
 def sync():
@@ -167,6 +168,18 @@ def getBalance():
     ret['Hash'] = hex(sipout.hash())[2:].upper()
 
     return json.dumps(ret)
+
+class BeverageList(Resource):
+	def get(self):
+		beverages = session.query(Inventory).all()
+		return {'test':'test'}
+
+class Beverage(Resource):
+	def get(self, beverage_id):
+		return {'beverage_id':beverage_id}
+
+api.add_resource(BeverageList, '/beverages')
+api.add_resource(Beverage, '/beverage/<beverage_id>');
 
 if __name__ == "__main__":
     app.run(
