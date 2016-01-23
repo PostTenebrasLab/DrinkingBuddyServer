@@ -37,5 +37,7 @@ class Transaction(Base):
     element_id = Column(Integer, ForeignKey('inventory.id'))
     element = relationship(Inventory)
  
-
+#Create Database
+#engine = create_engine("sqlite:///db.db", echo=True)
+#Base.metadata.create_all(engine)
 
