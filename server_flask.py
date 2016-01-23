@@ -14,6 +14,7 @@ import os
 import sys
 import datetime
 from flask import Flask, request, jsonify, Response
+from flask.ext.cors import CORS
 from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -45,6 +46,8 @@ session = DBSession()
 
 app = Flask(__name__)
 app.debug = True
+
+CORS(app)
 
 api = Api(app)
 
@@ -179,14 +182,14 @@ class BeverageListResource(Resource):
 			serialize(beverage)
 			for beverage in session.query(Inventory).all()
 		]
-		return json.dumps(beverages)
+		return beverages
 
 class BeverageResource(Resource):
 	def get(self, beverage_id):
 		beverage = serialize(session.query(Inventory).filter(Inventory.id == beverage_id).one())	
 		return beverage
 
-	def put(self, beverage_id):		
+	def post(self, beverage_id):		
 		beverage = session.query(Inventory).filter(Inventory.id == beverage_id).first()
 		for (field, value) in request.json.items():
 			setattr(beverage,field,value)
@@ -228,6 +231,5 @@ api.add_resource(UserResource, '/users/<user_id>')
 if __name__ == "__main__":
     app.run(
         host='0.0.0.0',
-#	host='10.0.2.15',
         port=int('5000')
     )
