@@ -4,6 +4,7 @@ from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
+from marshmallow import Schema, fields
  
 Base = declarative_base()
  
@@ -36,7 +37,13 @@ class Transaction(Base):
     user = relationship(User)
     element_id = Column(Integer, ForeignKey('inventory.id'))
     element = relationship(Inventory)
+
  
+class TransactionSchema(Schema):
+	
+	class Meta:
+		fields = ("id", "date", "value", "user_id", "element_id")
+	
 #Create Database
 #engine = create_engine("sqlite:///db.db", echo=True)
 #Base.metadata.create_all(engine)

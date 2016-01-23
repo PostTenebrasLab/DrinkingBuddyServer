@@ -22,7 +22,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import class_mapper
-from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction
+from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
 from collections import OrderedDict
 
 __author__ = 'Sebastien Chassot'
@@ -213,9 +213,11 @@ class UserResource(Resource):
 		user = serialize(session.query(User).filter(User.id == user_id).one())
 		return serialize(user)
 
-
-
-
+class TransactionListResource(Resource):
+	def get(self):
+		transactions = session.query(Transaction).all()
+		result, error = TransactionSchema(many=True).dump(transactions)
+		return result
 
 
 def serialize(model):
@@ -227,6 +229,8 @@ api.add_resource(BeverageResource, '/beverages/<beverage_id>')
 
 api.add_resource(UserListResource, '/users')
 api.add_resource(UserResource, '/users/<user_id>')
+
+api.add_resource(TransactionListResource, '/transactions')
 
 if __name__ == "__main__":
     app.run(
