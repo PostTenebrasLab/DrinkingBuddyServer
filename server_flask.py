@@ -20,7 +20,9 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import class_mapper
 from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction
+from collections import OrderedDict
 
 __author__ = 'Sebastien Chassot'
 __author_email__ = 'seba.ptl@sinux.net'
@@ -42,6 +44,8 @@ session = DBSession()
 
 
 app = Flask(__name__)
+app.debug = True
+
 api = Api(app)
 
 @app.route("/DrinkingBuddy/sync", methods=['GET'])
@@ -169,20 +173,61 @@ def getBalance():
 
     return json.dumps(ret)
 
-class BeverageList(Resource):
+class BeverageListResource(Resource):
 	def get(self):
-		beverages = session.query(Inventory).all()
-		return {'test':'test'}
+		beverages =  [
+			serialize(beverage)
+			for beverage in session.query(Inventory).all()
+		]
+		return json.dumps(beverages)
 
-class Beverage(Resource):
+class BeverageResource(Resource):
 	def get(self, beverage_id):
-		return {'beverage_id':beverage_id}
+		beverage = serialize(session.query(Inventory).filter(Inventory.id == beverage_id).one())	
+		return beverage
 
-api.add_resource(BeverageList, '/beverages')
-api.add_resource(Beverage, '/beverage/<beverage_id>');
+	def put(self, beverage_id):		
+		beverage = session.query(Inventory).filter(Inventory.id == beverage_id).first()
+		for (field, value) in request.json.items():
+			setattr(beverage,field,value)
+	
+		session.commit()
+		return serialize(beverage)
+
+class UserListResource(Resource):
+	def get(self):
+		#users = session.query(User, User.id, User.name, User.balance).all()
+
+		users = [
+			serialize(user)
+			for user in session.query(User).all()
+		]
+		return users
+
+
+class UserResource(Resource):
+	def get(self, user_id):
+		user = serialize(session.query(User).filter(User.id == user_id).one())
+		return serialize(user)
+
+
+
+
+
+
+def serialize(model):
+	columns = [c.key for c in class_mapper(model.__class__).columns]
+	return dict((c, getattr(model, c)) for c in columns)
+
+api.add_resource(BeverageListResource, '/beverages')
+api.add_resource(BeverageResource, '/beverages/<beverage_id>')
+
+api.add_resource(UserListResource, '/users')
+api.add_resource(UserResource, '/users/<user_id>')
 
 if __name__ == "__main__":
     app.run(
         host='0.0.0.0',
+#	host='10.0.2.15',
         port=int('5000')
     )
