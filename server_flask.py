@@ -18,7 +18,7 @@ from flask.ext.cors import CORS
 from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, joinedload, lazyload
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import class_mapper
@@ -215,8 +215,9 @@ class UserResource(Resource):
 
 class TransactionListResource(Resource):
 	def get(self):
-		transactions = session.query(Transaction).all()
+		transactions = session.query(Transaction).options(lazyload('*')).all()
 		result, error = TransactionSchema(many=True).dump(transactions)
+		print(transactions[0].element.name)
 		return result
 
 

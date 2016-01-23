@@ -5,6 +5,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
 from marshmallow import Schema, fields
+from flask_sqlalchemy import SQLAlchemy
+from flask_marshmallow import Marshmallow
  
 Base = declarative_base()
  
@@ -39,10 +41,26 @@ class Transaction(Base):
     element = relationship(Inventory)
 
  
+class UserSchema(Schema):
+
+	class Meta:
+		fields = ("id", "name", "balance")
+
+
+class InventorySchema(Schema):
+
+	class Meta:
+		fields = ("id", "name")
+
+
 class TransactionSchema(Schema):
 	
+	user = fields.Nested(UserSchema)
+	element = fields.Nested(InventorySchema)
 	class Meta:
-		fields = ("id", "date", "value", "user_id", "element_id")
+		fields = ("id", "date", "value", "user_id", "element_id","user","element")
+
+		
 	
 #Create Database
 #engine = create_engine("sqlite:///db.db", echo=True)
