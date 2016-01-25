@@ -22,6 +22,7 @@ from sqlalchemy.orm import relationship, joinedload, lazyload
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import class_mapper
+from sqlalchemy.sql import func
 from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
 from collections import OrderedDict
 
@@ -175,6 +176,25 @@ def getBalance():
     ret['Hash'] = hex(sipout.hash())[2:].upper()
 
     return json.dumps(ret)
+
+@app.route("/DrinkingBuddy/total", methods=['GET'])
+def total():
+
+    date_from = request.args['from']
+    date_to = request.args['to']
+
+    query = session.query(
+        #func.month(Transaction.date).label("period"),  #sql only        
+        func.sum(Transaction.value).label("transaction_value"), 
+        func.count(Transaction.id).label("transaction_count"),
+    ).filter(Transaction.date.between(date_from, date_to))
+
+    #query.group_by(func.month(Transaction.date)) #sql only
+
+    results = [str(e.transaction_value) + " " + str(e.transaction_count) for e in query.all()]
+
+    return json.dumps(results)
+
 
 class BeverageListResource(Resource):
 	def get(self):
