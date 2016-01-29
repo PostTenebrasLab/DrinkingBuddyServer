@@ -204,6 +204,12 @@ class BeverageListResource(Resource):
 		]
 		return beverages
 
+	def post(self):
+		beverage = Inventory(name = request.json['name'], quantity = request.json['quantity'])
+		session.add(beverage)
+		session.commit()		
+		return serialize(beverage)
+
 class BeverageResource(Resource):
 	def get(self, beverage_id):
 		beverage = serialize(session.query(Inventory).filter(Inventory.id == beverage_id).one())	
@@ -237,7 +243,7 @@ class TransactionListResource(Resource):
 	def get(self):
 		transactions = session.query(Transaction).options(lazyload('*')).all()
 		result, error = TransactionSchema(many=True).dump(transactions)
-		print(transactions[0].element.name)
+		#print(transactions[0].element.name)
 		return result
 
 
