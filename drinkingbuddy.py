@@ -52,7 +52,7 @@ CORS(app)
 
 api = Api(app)
 
-@app.route("/DrinkingBuddy/sync", methods=['GET'])
+@app.route("/sync", methods=['GET'])
 def sync():
     """ return drinks catalog
 
@@ -75,7 +75,7 @@ def sync():
     return json.dumps(request)
 
 
-@app.route("/DrinkingBuddy/buy", methods=['POST'])
+@app.route("/buy", methods=['POST'])
 def buy():
     """ buy request
     
@@ -132,7 +132,7 @@ def buy():
 
     return json.dumps(ret)
 
-@app.route("/DrinkingBuddy/balance", methods=['POST'])
+@app.route("/balance", methods=['POST'])
 def getBalance():
     """ Get balance request
     
@@ -177,7 +177,7 @@ def getBalance():
 
     return json.dumps(ret)
 
-@app.route("/DrinkingBuddy/total", methods=['GET'])
+@app.route("/total", methods=['GET'])
 def total():
 
     date_from = request.args['from']
@@ -260,7 +260,5 @@ api.add_resource(UserResource, '/users/<user_id>')
 api.add_resource(TransactionListResource, '/transactions')
 
 if __name__ == "__main__":
-    app.run(
-        host='0.0.0.0',
-        port=int('5000')
-    )
+    app.run()
+    
