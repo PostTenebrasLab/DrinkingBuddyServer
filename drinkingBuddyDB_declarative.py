@@ -17,6 +17,7 @@ class Inventory(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
     quantity = Column(Integer)
+    minquantity = Column(Integer)
     price = Column(Integer)
     category_id = Column(Integer, ForeignKey('category.id'))
     category = relationship(Category)

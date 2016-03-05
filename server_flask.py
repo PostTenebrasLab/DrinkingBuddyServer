@@ -91,7 +91,8 @@ def buy():
     if dict_req['Hash'] == hex(sipin.hash())[2:].upper():
         print("Cool hash's OK")
     else:
-        print("Pas Cool !!!!!!!!!!")
+        print("Hash pas Cool !!!!!!!!!!")
+        return json.dumps("ERROR")
     print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
 
     currentUser = session.query(User).filter(User.id == int(badge,16)).one()
@@ -101,13 +102,12 @@ def buy():
     currentItem.quantity = currentItem.quantity - 1
     ret = []
     if(currentItem.quantity < 0):
-        session.rollback()
         print('product not in stock anymore')
-        ret = {'Melody': "sad melody", 'Message': ['Product not in stock anymore', 'Please choose something else'], 'Time': now.__str__()}
+        ret = {'Melody': "b2c3b2", 'Message': ['ERROR', 'Not in stock'], 'Time': now.__str__()}
     elif(currentUser.balance < 0):
         session.rollback()
         print('not enough money in the account!')
-        ret = {'Melody': "sad melody", 'Message': ['Not enough money in the account!', 'Get Rich or Die Trying'], 'Time': now.__str__()}
+        ret = {'Melody': "b2c3b2", 'Message': ['ERROR', 'You are too poor!'], 'Time': now.__str__()}
     else:
         session.commit()
         print([currentUser.name, "{:.2f}".format(currentUser.balance/100)])
@@ -153,7 +153,7 @@ def getBalance():
     badgeId = int(badge, 16)
     element = session.query(User, User.name, User.balance).filter(User.id == badgeId)
     if element.count() == 0:
-        messages = ['Unknown User', '0.00']
+        messages = ['ERROR', 'UNKNOWN USER']
         ret = {'Melody': "c5", 'Message': messages, 'Time': now}
     else:
         messages = [element.one().name, "{:.2f}".format(element.one().balance/100)]
