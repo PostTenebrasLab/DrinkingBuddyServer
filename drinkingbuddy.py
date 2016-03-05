@@ -14,12 +14,17 @@ import os
 import sys
 import datetime
 from flask import Flask, request, jsonify, Response
+from flask.ext.cors import CORS
+from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, joinedload, lazyload
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction
+from sqlalchemy.orm import class_mapper
+from sqlalchemy.sql import func
+from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
+from collections import OrderedDict
 
 __author__ = 'Sebastien Chassot'
 __author_email__ = 'seba.ptl@sinux.net'
@@ -41,9 +46,13 @@ session = DBSession()
 
 
 app = Flask(__name__)
+app.debug = True
 
+CORS(app)
 
-@app.route("/DrinkingBuddy/sync", methods=['GET'])
+api = Api(app)
+
+@app.route("/sync", methods=['GET'])
 def sync():
     """ return drinks catalog
 
@@ -66,7 +75,7 @@ def sync():
     return json.dumps(request)
 
 
-@app.route("/DrinkingBuddy/buy", methods=['POST'])
+@app.route("/buy", methods=['POST'])
 def buy():
     """ buy request
     
@@ -123,7 +132,7 @@ def buy():
 
     return json.dumps(ret)
 
-@app.route("/DrinkingBuddy/balance", methods=['POST'])
+@app.route("/balance", methods=['POST'])
 def getBalance():
     """ Get balance request
     
@@ -168,8 +177,88 @@ def getBalance():
 
     return json.dumps(ret)
 
+@app.route("/total", methods=['GET'])
+def total():
+
+    date_from = request.args['from']
+    date_to = request.args['to']
+
+    query = session.query(
+        #func.month(Transaction.date).label("period"),  #sql only        
+        func.sum(Transaction.value).label("transaction_value"), 
+        func.count(Transaction.id).label("transaction_count"),
+    ).filter(Transaction.date.between(date_from, date_to))
+
+    #query.group_by(func.month(Transaction.date)) #sql only
+
+    results = [str(e.transaction_value) + " " + str(e.transaction_count) for e in query.all()]
+
+    return json.dumps(results)
+
+
+class BeverageListResource(Resource):
+	def get(self):
+		beverages =  [
+			serialize(beverage)
+			for beverage in session.query(Inventory).all()
+		]
+		return beverages
+
+	def post(self):
+		beverage = Inventory(name = request.json['name'], quantity = request.json['quantity'])
+		session.add(beverage)
+		session.commit()		
+		return serialize(beverage)
+
+class BeverageResource(Resource):
+	def get(self, beverage_id):
+		beverage = serialize(session.query(Inventory).filter(Inventory.id == beverage_id).one())	
+		return beverage
+
+	def post(self, beverage_id):		
+		beverage = session.query(Inventory).filter(Inventory.id == beverage_id).first()
+		for (field, value) in request.json.items():
+			setattr(beverage,field,value)
+	
+		session.commit()
+		return serialize(beverage)
+
+class UserListResource(Resource):
+	def get(self):
+		#users = session.query(User, User.id, User.name, User.balance).all()
+
+		users = [
+			serialize(user)
+			for user in session.query(User).all()
+		]
+		return users
+
+
+class UserResource(Resource):
+	def get(self, user_id):
+		user = serialize(session.query(User).filter(User.id == user_id).one())
+		return serialize(user)
+
+class TransactionListResource(Resource):
+	def get(self):
+		transactions = session.query(Transaction).options(lazyload('*')).all()
+		result, error = TransactionSchema(many=True).dump(transactions)
+		#print(transactions[0].element.name)
+		return result
+
+
+def serialize(model):
+	columns = [c.key for c in class_mapper(model.__class__).columns]
+	return dict((c, getattr(model, c)) for c in columns)
+
+api.add_resource(BeverageListResource, '/beverages')
+api.add_resource(BeverageResource, '/beverages/<beverage_id>')
+
+api.add_resource(UserListResource, '/users')
+api.add_resource(UserResource, '/users/<user_id>')
+
+api.add_resource(TransactionListResource, '/transactions')
+
 if __name__ == "__main__":
-    app.run(
-        host='0.0.0.0',
-        port=int('5000')
-    )
+    app.run()
+    
