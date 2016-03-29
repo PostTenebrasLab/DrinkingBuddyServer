@@ -1,0 +1,7 @@
+siphash
+Flask
+Flask-RESTful
+Flask-CORS
+sqlalchemy
+flask_sqlalchemy
+flask_marshmallow
