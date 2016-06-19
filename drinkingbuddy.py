@@ -13,7 +13,7 @@ import binascii
 import os
 import sys
 import datetime
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, g
 from flask.ext.cors import CORS
 from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
@@ -25,6 +25,8 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.sql import func
 from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
 from collections import OrderedDict
+from flask_simpleldap import LDAP
+from pprint import pprint
 
 __author__ = 'Sebastien Chassot'
 __author_email__ = 'seba.ptl@sinux.net'
@@ -46,7 +48,16 @@ session = DBSession()
 
 
 app = Flask(__name__)
+
+app.config['LDAP_BASE_DN'] = 'OU=users,dc=example,dc=org'
+app.config['LDAP_USERNAME'] = 'CN=user,OU=Users,DC=example,DC=org'
+app.config['LDAP_PASSWORD'] = 'password'
+
+ldap = LDAP(app)
+
+
 app.debug = True
+
 
 CORS(app)
 
@@ -212,20 +223,39 @@ def total():
 
     return json.dumps(results)
 
+@app.route("/beverages", methods=['GET'])
+def getBeverages():
+    beverages =  [
+        serialize(beverage)
+        for beverage in session.query(Inventory).all()
+    ]
+    return json.dumps(beverages)
 
-class BeverageListResource(Resource):
-	def get(self):
-		beverages =  [
-			serialize(beverage)
-			for beverage in session.query(Inventory).all()
-		]
-		return beverages
+@app.route("/beverages", methods=['POST'])
+def postBeverages():
+    data = request.get_json(force=True)
+    pprint(json)
+    beverage = Inventory(name = data['name'], quantity = data['quantity'])
+    session.add(beverage)
+    session.commit()        
+    return json.dumps(serialize(beverage))
 
-	def post(self):
-		beverage = Inventory(name = request.json['name'], quantity = request.json['quantity'])
-		session.add(beverage)
-		session.commit()		
-		return serialize(beverage)
+#class BeverageListResource(Resource):
+#
+#	def get(self):
+#		beverages =  [
+#			serialize(beverage)
+#			for beverage in session.query(Inventory).all()
+#		]
+#		return beverages
+#
+#	def post(self):
+#		beverage = Inventory(name = request.json['name'], quantity = request.json['quantity'])
+#		session.add(beverage)
+#		session.commit()		
+#		return serialize(beverage)
+
+
 
 class BeverageResource(Resource):
 	def get(self, beverage_id):
@@ -268,7 +298,8 @@ def serialize(model):
 	columns = [c.key for c in class_mapper(model.__class__).columns]
 	return dict((c, getattr(model, c)) for c in columns)
 
-api.add_resource(BeverageListResource, '/beverages')
+#api.add_resource(BeverageListResource, '/beverages')
+
 api.add_resource(BeverageResource, '/beverages/<beverage_id>')
 
 api.add_resource(UserListResource, '/users')
