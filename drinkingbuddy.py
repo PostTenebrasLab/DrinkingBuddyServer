@@ -61,7 +61,7 @@ def sync():
     """
     sip = siphash.SipHash_2_4(key)
 
-    now = round(time.time()/60)
+    now = round(time.time())
     elements = session.query(Inventory, Inventory.name, Inventory.price).filter(Inventory.quantity > 0).all()
     catalog = [e.name + " " + "{:.2f}".format(e.price/100) for e in elements]
     request = {'Header': "DrinkingBuddy", 'Products': catalog, 'Time': now}
@@ -69,8 +69,13 @@ def sync():
     hash_str = request['Header'] + "".join(catalog) + now.__str__()
     for c in hash_str:
         sip.update(binascii.a2b_qp(c))
-
-    request['Hash'] = hex(sip.hash())[2:].upper()
+    
+    reqHash = hex(sip.hash())[2:-1].upper()
+    reqHash = reqHash.zfill(16)
+   
+    request['Hash'] = reqHash
+ 
+    print(request['Hash'])
     
     return json.dumps(request)
 
@@ -85,7 +90,7 @@ def buy():
     sipout = siphash.SipHash_2_4(key)
     sipin = siphash.SipHash_2_4(key)
 
-    now = round(time.time()/60)
+    now = round(time.time())
 
     dict_req = request.get_json()
 
@@ -97,7 +102,10 @@ def buy():
     for c in hash_verif:
         sipin.update(binascii.a2b_qp(c))
 
-    if dict_req['Hash'] == hex(sipin.hash())[2:].upper():
+    reqHash = hex(sipin.hash())[2:-1].upper();
+    reqHash = reqHash.zfill(16)
+
+    if dict_req['Hash'] == reqHash:
         print("Cool hash's OK")
     else:
         print("Hash pas Cool !!!!!!!!!!")
@@ -127,8 +135,11 @@ def buy():
     hash_str = ret['Melody'] + "".join(ret['Message']) + now.__str__()
     for c in hash_str:
         sipout.update(binascii.a2b_qp(c))
+  
+    retHash = hex(sipout.hash())[2:-1].upper()
+    retHash = retHash.zfill(16)
 
-    ret['Hash'] = hex(sipout.hash())[2:].upper()
+    ret['Hash'] = reqHash
 
     return json.dumps(ret)
 
@@ -142,7 +153,7 @@ def getBalance():
     sipout = siphash.SipHash_2_4(key)
     sipin = siphash.SipHash_2_4(key)
 
-    now = round(time.time()/60)
+    now = round(time.time())
 
 #    if request._headers['Content-Type'] == 'application/json':
     dict_req = request.get_json()
@@ -154,7 +165,10 @@ def getBalance():
     for c in hash_verif:
         sipin.update(binascii.a2b_qp(c))
 
-    if dict_req['Hash'] == hex(sipin.hash())[2:].upper():
+    reqHash = hex(sipin.hash())[2:-1].upper()
+    reqHash = reqHash.zfill(16)
+
+    if dict_req['Hash'] == reqHash:
         print("Cool hash's OK")
     else:
         print("Pas Cool !!!!!!!!!!")
@@ -173,7 +187,10 @@ def getBalance():
     for c in hash_str:
         sipout.update(binascii.a2b_qp(c))
 
-    ret['Hash'] = hex(sipout.hash())[2:].upper()
+    retHash = hex(sipout.hash())[2:-1].upper()
+    retHash = retHash.zfill(16)
+
+    ret['Hash'] = retHash
 
     return json.dumps(ret)
 
@@ -260,5 +277,5 @@ api.add_resource(UserResource, '/users/<user_id>')
 api.add_resource(TransactionListResource, '/transactions')
 
 if __name__ == "__main__":
-    app.run()
+    app.run(host="0.0.0.0")
     
