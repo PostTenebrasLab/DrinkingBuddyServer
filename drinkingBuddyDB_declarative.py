@@ -2,7 +2,7 @@
 
 import os
 import sys
-from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
@@ -13,18 +13,34 @@ from flask_marshmallow import Marshmallow
 Base = declarative_base()
  
 class Category(Base):
-    __tablename__ = 'category'
+    __tablename__ = 'categories'
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
 
-class Inventory(Base):
-    __tablename__ = 'inventory'
+class Terminal(Base):
+    __tablename__ = 'terminals'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(50), nullable=False)
+    key = Column(String(64), nullable=False)
+
+class Functionality(Base):
+    __tablename__ = 'functionalities'
+    id = Column(Integer, primary_key=True)
+    category_id = Column(Integer, ForeignKey('categories.id'))
+    category = relationship(Category)
+    terminal_id = Column(Integer, ForeignKey('terminals.id'))
+    terminal = relationship(Terminal)
+
+class Item(Base):
+    __tablename__ = 'items'
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
     quantity = Column(Integer)
     minquantity = Column(Integer)
     price = Column(Integer)
-    category_id = Column(Integer, ForeignKey('category.id'))
+    barcode = Column(String(32), nullable=True)
+    pictureURL = Column(String(512), nullable=True)
+    category_id = Column(Integer, ForeignKey('categories.id'))
     category = relationship(Category)
 
 class User(Base):
@@ -32,6 +48,13 @@ class User(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(50))
     balance = Column(Integer)
+    type = Column(Integer)
+
+class Card(Base):
+    __tablename__ = 'cards'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    user = relationship(User)
 
 class Transaction(Base):
     __tablename__ = 'transactions'
@@ -40,9 +63,20 @@ class Transaction(Base):
     value = Column(Integer)
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship(User)
-    element_id = Column(Integer, ForeignKey('inventory.id'))
-    element = relationship(Inventory)
 
+
+class TransactionItem(Base):
+    __tablename__ = 'transaction_items'
+    id = Column(Integer, primary_key=True)
+    date = Column(DateTime)
+    quantity = Column(Integer)
+    price_per_item = Column(Integer)
+    canceled = Column(Boolean, default=False)
+    canceled_date = Column(DateTime)
+    element_id = Column(Integer, ForeignKey('items.id'))
+    element = relationship(Item)
+    transaction_id = Column(Integer, ForeignKey('transactions.id'))
+    transaction = relationship(Transaction)
  
 class UserSchema(Schema):
 
@@ -50,22 +84,28 @@ class UserSchema(Schema):
 		fields = ("id", "name", "balance")
 
 
-class InventorySchema(Schema):
+class ItemSchema(Schema):
 
 	class Meta:
 		fields = ("id", "name")
 
 
+class TransactionItemSchema(Schema):
+    element = fields.Nested(ItemSchema)
+    class Meta:
+        fields = ("id", "date", "value", "element_id", "element")
+
+
 class TransactionSchema(Schema):
-	
 	user = fields.Nested(UserSchema)
-	element = fields.Nested(InventorySchema)
+	transactionItems = fields.Nested(TransactionItemSchema, many=True)
 	class Meta:
-		fields = ("id", "date", "value", "user_id", "element_id","user","element")
+		fields = ("id", "date", "value", "user_id", "user", "transactionItems")
+
 
 		
 	
 #Create Database
-#engine = create_engine("sqlite:///db.db", echo=True)
-#Base.metadata.create_all(engine)
+engine = create_engine("sqlite:///db.db", echo=True)
+Base.metadata.create_all(engine)
 
