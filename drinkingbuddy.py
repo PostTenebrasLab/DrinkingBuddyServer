@@ -14,7 +14,7 @@ import os
 import sys
 import datetime
 from flask import Flask, request, jsonify, Response, g
-from flask.ext.cors import CORS
+from flask_cors import CORS
 from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
@@ -23,7 +23,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.sql import func
-from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
+# from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
+from drinkingBuddyDB_declarative import Base, Category, Item, User, Transaction, TransactionSchema
 from collections import OrderedDict
 from random import randint
 #from flask_simpleldap import LDAP
@@ -37,9 +38,7 @@ __copyright__ = ""
 __licence__ = "GPL"
 __status__ = ""
 
-key = b'0123456789ABCDEF'
-
-engine = create_engine('sqlite:////data/www_app/drinkingbuddy/drinkingBuddy.db')
+engine = create_engine('sqlite:///./db.db')
 
 Base.metadata.bind = engine
 
@@ -74,8 +73,8 @@ def sync():
     sip = siphash.SipHash_2_4(key)
 
     now = round(time.time())
-    elements = session.query(Inventory, Inventory.name, Inventory.price).filter(Inventory.quantity > 0).all()
-    elementsID = session.query(Inventory, Inventory.id).filter(Inventory.quantity > 0).all()
+    elements = session.query(Item, Item.name, Item.price).filter(Item.quantity > 0).all()
+    elementsID = session.query(Item, Item.id).filter(Item.quantity > 0).all()
 
     catalog = [e.name + " " + "{:.2f}".format(e.price/100) for e in elements]
     catalogDBID = [e.id for e in elementsID]
@@ -131,7 +130,7 @@ def buy():
     print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
 
     currentUser = session.query(User).filter(User.id == int(badge,16)).one()
-    currentItem = session.query(Inventory).filter(Inventory.id == int(product)).one()
+    currentItem = session.query(Item).filter(Item.id == int(product)).one()
     currentItem.quantity = currentItem.quantity - 1
     currentUser.balance = currentUser.balance - currentItem.price
 
@@ -242,7 +241,7 @@ def total():
 def getBeverages():
     beverages =  [
         serialize(beverage)
-        for beverage in session.query(Inventory).all()
+        for beverage in session.query(Item).all()
     ]
     return json.dumps(beverages)
 
@@ -250,7 +249,7 @@ def getBeverages():
 def postBeverages():
     data = request.get_json(force=True)
     pprint(json)
-    beverage = Inventory(name = data['name'], quantity = data['quantity'])
+    beverage = Item(name = data['name'], quantity = data['quantity'])
     session.add(beverage)
     session.commit()
     return json.dumps(serialize(beverage))
@@ -274,11 +273,11 @@ def postBeverages():
 
 class BeverageResource(Resource):
         def get(self, beverage_id):
-                beverage = serialize(session.query(Inventory).filter(Inventory.id == beverage_id).one())
+                beverage = serialize(session.query(Item).filter(Item.id == beverage_id).one())
                 return beverage
 
         def post(self, beverage_id):
-                beverage = session.query(Inventory).filter(Inventory.id == beverage_id).first()
+                beverage = session.query(Item).filter(Item.id == beverage_id).first()
                 for (field, value) in request.json.items():
                         setattr(beverage,field,value)
 
