@@ -19,10 +19,8 @@ from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, joinedload, lazyload
-from flask_sqlalchemy import get_debug_queries
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import sessionmaker, exc, class_mapper
 from sqlalchemy.sql import func
 # from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
 from drinkingBuddyDB_declarative import Base, Category, Item, Terminal, Card, User, Transaction, TransactionItem, Functionality
@@ -58,6 +56,7 @@ app.config['LDAP_PASSWORD'] = 'password'
 
 
 app.debug = True
+DEVEL_TEST = True
 
 
 CORS(app)
@@ -66,41 +65,43 @@ api = Api(app)
 
 @app.route("/sync", methods=['POST'])
 def sync():
-    """ return drinks catalog
+    """ return drinks catalog based on terminal id
 
+    curl -X POST -H 'Content-Type: application/json' -d '{"Tid":"1"}' http://localhost:5000/sync
 
-    :return: JSON request tous les capteurs de la classe
+    :return: JSON request toutes les categories accessible a un terminal
     """
     dict_req = request.get_json()
 
-    termid = dict_req['tid']
-    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+    try:
+        termid = dict_req['Tid']
+    except KeyError:
+        return json.dumps({"DrinkingBuddy sync error": "Unknown terminal ID or key"})
 
-    sip = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
 
     now = round(time.time())
 
-    # query_elements = session.query(Item, Item.name, Item.price).filter(Item.quantity > 0).all()
-    # query_elementsID = session.query(Item, Item.id).filter(Item.quantity > 0).all()
-    query_elementsID = session.query(Item, Functionality, Item.id, Item.name, Item.price).filter(Functionality.terminal_id == termid, Item.quantity > 0, Functionality.category_id == Item.category_id)
+    query_elementsID = session.query(Item, Functionality, Item.id, Item.name,
+                                     Item.price).filter(Functionality.terminal_id == termid,
+                                     Item.quantity > 0, Functionality.category_id == Item.category_id)
 
-    # print(get_debug_queries()[0])
-    # catalog = [e.name + " " + "{:.2f}".format(e.price/100) for e in query_elementsID]
     catalog = [[e.id, e.name, "{:.2f}".format(e.price/100)] for e in query_elementsID]
-    # catalogDBID = [e.id for e in query_elementsID]
+
     response = {'Header': "DrinkingBuddy", 'Products': catalog, 'Time': now}
 
     hash_str = response['Header'] + "".join(str(catalog)) + now.__str__()
     for c in hash_str:
-        sip.update(binascii.a2b_qp(c))
+        sipin.update(binascii.a2b_qp(c))
 
-    #reqHash = hex(sip.hash())[2:-1].upper()  #This change is not working on Coltello, but works on the RaspberryPi!!!
-    reqHash = hex(sip.hash())[2:].upper()
+    reqHash = hex(sipin.hash())[2:].upper()
     reqHash = reqHash.zfill(16)
 
     response['Hash'] = reqHash
 
-    print(response['Hash'])
+    if app.debug:
+        print(response['Hash'])
 
     return json.dumps(response)
 
@@ -109,62 +110,88 @@ def sync():
 def buy():
     """ buy request
 
+    curl -X POST -H 'Content-Type: application/json' -d '{"Tid":"1","Badge":"4285702E","Product":"5","Time":"53677","Hash":"4527E4199D78DC12"}' http://localhost:5000/buy
+    
 
     :return: JSON request tous les capteurs de la classe
     """
-    sipout = siphash.SipHash_2_4(key)
-    sipin = siphash.SipHash_2_4(key)
+    dict_req = request.get_json()
+
+    try:
+        termid = dict_req['Tid']
+        badge = dict_req['Badge']
+        product = dict_req['Product']
+        time_req = dict_req['Time']
+        sent_hash = dict_req['Hash']
+    except KeyError:
+        return json.dumps({"DrinkingBuddy buy error": "Unknown key(s)"})
+
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+
+    sipout = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
 
     now = round(time.time())
 
-    dict_req = request.get_json()
-
-    badge = dict_req['Badge']
-    product = dict_req['Product']
-    time_req = dict_req['Time']
-    print("Buying: " + product + " Badge: " + badge)
+    if app.debug:
+        print("Buying: " + product + " Badge: " + badge)
 
     hash_verif = badge + str(product) + str(time_req)
     for c in hash_verif:
         sipin.update(binascii.a2b_qp(c))
 
-    #reqHash = hex(sipin.hash())[2:-1].upper();  #This change not working on coltello, works on raspberry
-    reqHash = hex(sipin.hash())[2:].upper();
-    reqHash = reqHash.zfill(16)
+    req_hash = hex(sipin.hash())[2:].upper()
+    req_hash = req_hash.zfill(16)
 
-    if dict_req['Hash'] == reqHash:
-        print("Cool hash's OK")
+    if sent_hash == req_hash:
+        if app.debug and DEVEL_TEST:
+            print("Cool hash's OK and is "+str(req_hash))
     else:
-        print("Hash pas Cool !!!!!!!!!!")
-        return json.dumps("ERROR")
-    print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
+        if app.debug:
+            print("Hash pas Cool !!!!!!!!!!")
+        return json.dumps({"DrinkingBuddy error": "Hash error "+str(req_hash)})
 
-    currentUser = session.query(User).filter(User.id == int(badge,16)).one()
-    currentItem = session.query(Item).filter(Item.id == int(product)).one()
+    if app.debug:
+        print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
+
+    try:
+        currentUser = session.query(User).join(Card).filter(Card.user_id == User.id, Card.id == int(badge, 16)).one()
+        currentItem = session.query(Item).filter(Item.id == int(product)).one()
+    except exc.NoResultFound:
+        return json.dumps({"DrinkingBuddy buy sql error": "No result found"})
+
     currentItem.quantity = currentItem.quantity - 1
     currentUser.balance = currentUser.balance - currentItem.price
 
 
-    ret = []
+    response = []
     if(currentItem.quantity < 0):
         session.rollback()
         print('product not in stock anymore' + str(currentItem.price) + " " + currentItem.name + "  " + str(currentItem.quantity))
-        ret = {'Melody': "b2c3b2", 'Message': ['ERROR', 'Not in stock'], 'Time': now.__str__()}
+        response = {'Melody': "b2c3b2", 'Message': ['ERROR', 'Not in stock'], 'Time': now.__str__()}
     elif(currentUser.balance + currentItem.price < currentItem.price):  #we do the + price again because we need to compare before deducting the price
         session.rollback()
         print('not enough money in the account!')
-        ret = {'Melody': "b2c3b2", 'Message': ['ERROR', 'Too poor!'], 'Time': now.__str__()}
+        response = {'Melody': "b2c3b2", 'Message': ['ERROR', 'Too poor!'], 'Time': now.__str__()}
     else:
         print([currentUser.name, "{:.2f}".format(currentUser.balance/100)])
-        new_transaction = Transaction(date = datetime.datetime.now(), value = 1, user = currentUser, element = currentItem)
+        # new_transaction = Transaction(date = datetime.datetime.now(), value = 1, user = currentUser, element = currentItem)
+        new_transaction = Transaction(date=datetime.datetime.now(), value=1, user=currentUser)
+        new_transactionitem = TransactionItem(date=datetime.datetime.now(),
+                                              quantity=1,
+                                              price_per_item=currentItem.price,
+                                              canceled_date=None,
+                                              element_id=currentItem.price,
+                                              transaction=new_transaction)
         session.add(new_transaction)
-        ret = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
+        session.add(new_transactionitem)
+        response = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
         #if(randint(1,20) != 20 & currentItem.category_id == 2) #If 20 (5% chance) then we give a free beer!  ----> Syntax needs to be corrected
         #    currentUser.balance = currentUser.balance + currentItem.price #Give back the money
         #    ret = {'Melody': "2d2a1f2c2d2a2d2c2f2d2a2c2d2a1f2c2d2a2a2g2p8p8p8p", 'Message': ['YOU WON!!! :)', 'FREE BEER!'], 'Time': now.__str__()}
         session.commit()
 
-    hash_str = ret['Melody'] + "".join(ret['Message']) + now.__str__()
+    hash_str = response['Melody'] + "".join(response['Message']) + now.__str__()
     for c in hash_str:
         sipout.update(binascii.a2b_qp(c))
 
@@ -172,9 +199,10 @@ def buy():
     retHash = hex(sipout.hash())[2:].upper()
     retHash = retHash.zfill(16)
 
-    ret['Hash'] = retHash
+    response['Hash'] = retHash
 
-    return json.dumps(ret)
+    return json.dumps(response)
+
 
 @app.route("/balance", methods=['POST'])
 def getBalance():
