@@ -19,12 +19,13 @@ from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, joinedload, lazyload
+from flask_sqlalchemy import get_debug_queries
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.orm import class_mapper
 from sqlalchemy.sql import func
 # from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
-from drinkingBuddyDB_declarative import Base, Category, Item, User, Transaction, TransactionSchema
+from drinkingBuddyDB_declarative import Base, Category, Item, Terminal, Card, User, Transaction, TransactionItem, Functionality
 from collections import OrderedDict
 from random import randint
 #from flask_simpleldap import LDAP
@@ -63,24 +64,33 @@ CORS(app)
 
 api = Api(app)
 
-@app.route("/sync", methods=['GET'])
+@app.route("/sync", methods=['POST'])
 def sync():
     """ return drinks catalog
 
 
     :return: JSON request tous les capteurs de la classe
     """
-    sip = siphash.SipHash_2_4(key)
+    dict_req = request.get_json()
+
+    termid = dict_req['tid']
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+
+    sip = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
 
     now = round(time.time())
-    elements = session.query(Item, Item.name, Item.price).filter(Item.quantity > 0).all()
-    elementsID = session.query(Item, Item.id).filter(Item.quantity > 0).all()
 
-    catalog = [e.name + " " + "{:.2f}".format(e.price/100) for e in elements]
-    catalogDBID = [e.id for e in elementsID]
-    request = {'Header': "DrinkingBuddy", 'Products': catalog, 'DBID': catalogDBID, 'Time': now}
+    # query_elements = session.query(Item, Item.name, Item.price).filter(Item.quantity > 0).all()
+    # query_elementsID = session.query(Item, Item.id).filter(Item.quantity > 0).all()
+    query_elementsID = session.query(Item, Functionality, Item.id, Item.name, Item.price).filter(Functionality.terminal_id == termid, Item.quantity > 0, Functionality.category_id == Item.category_id)
 
-    hash_str = request['Header'] + "".join(catalog) + now.__str__()
+    # print(get_debug_queries()[0])
+    # catalog = [e.name + " " + "{:.2f}".format(e.price/100) for e in query_elementsID]
+    catalog = [[e.id, e.name, "{:.2f}".format(e.price/100)] for e in query_elementsID]
+    # catalogDBID = [e.id for e in query_elementsID]
+    response = {'Header': "DrinkingBuddy", 'Products': catalog, 'Time': now}
+
+    hash_str = response['Header'] + "".join(str(catalog)) + now.__str__()
     for c in hash_str:
         sip.update(binascii.a2b_qp(c))
 
@@ -88,11 +98,11 @@ def sync():
     reqHash = hex(sip.hash())[2:].upper()
     reqHash = reqHash.zfill(16)
 
-    request['Hash'] = reqHash
+    response['Hash'] = reqHash
 
-    print(request['Hash'])
+    print(response['Hash'])
 
-    return json.dumps(request)
+    return json.dumps(response)
 
 
 @app.route("/buy", methods=['POST'])

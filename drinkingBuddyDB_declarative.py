@@ -80,14 +80,14 @@ class TransactionItem(Base):
  
 class UserSchema(Schema):
 
-	class Meta:
-		fields = ("id", "name", "balance")
+    class Meta:
+        fields = ("id", "name", "balance")
 
 
 class ItemSchema(Schema):
 
-	class Meta:
-		fields = ("id", "name")
+    class Meta:
+        fields = ("id", "name")
 
 
 class TransactionItemSchema(Schema):
@@ -97,14 +97,11 @@ class TransactionItemSchema(Schema):
 
 
 class TransactionSchema(Schema):
-	user = fields.Nested(UserSchema)
-	transactionItems = fields.Nested(TransactionItemSchema, many=True)
-	class Meta:
-		fields = ("id", "date", "value", "user_id", "user", "transactionItems")
+    user = fields.Nested(UserSchema)
+    transactionItems = fields.Nested(TransactionItemSchema, many=True)
+    class Meta:
+        fields = ("id", "date", "value", "user_id", "user", "transactionItems")
 
-
-		
-	
 #Create Database
 engine = create_engine("sqlite:///db.db", echo=True)
 Base.metadata.create_all(engine)
