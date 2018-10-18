@@ -26,6 +26,7 @@ from sqlalchemy.sql import func
 from drinkingBuddyDB_declarative import Base, Category, Item, Terminal, Card, User, Transaction, TransactionItem, Functionality
 from collections import OrderedDict
 from random import randint
+import paho.mqtt.client as paho
 #from flask_simpleldap import LDAP
 from pprint import pprint
 
@@ -51,6 +52,13 @@ app = Flask(__name__)
 app.config['LDAP_BASE_DN'] = 'OU=users,dc=example,dc=org'
 app.config['LDAP_USERNAME'] = 'CN=user,OU=Users,DC=example,DC=org'
 app.config['LDAP_PASSWORD'] = 'password'
+broker="mqtt.lan.posttenebraslab.ch"
+
+client= paho.Client("client-001") #create client object client1.on_publish = on_publish #assign function to callback client1.connect(broker,port) #establish connection$
+client.username_pw_set("ptllocker1", "P0stL0ck")
+#print("publishing ")
+#client.disconnect() #disconnect
+
 
 #ldap = LDAP(app)
 
@@ -91,7 +99,14 @@ def sync():
 
     response = {'Header': "DrinkingBuddy", 'Products': catalog, 'Time': now}
 
-    hash_str = response['Header'] + "".join(str(catalog)) + now.__str__()
+    hash_str = response['Header']
+    for e in query_elementsID:
+        hash_str += str(e.id)
+        hash_str += e.name
+        hash_str += "{:.2f}".format(e.price/100) 
+    hash_str += now.__str__()
+
+    
     for c in hash_str:
         sipin.update(binascii.a2b_qp(c))
 
@@ -101,30 +116,108 @@ def sync():
     response['Hash'] = reqHash
 
     if app.debug:
+        print(hash_str)
         print(response['Hash'])
 
     return json.dumps(response)
 
-
-@app.route("/buy", methods=['POST'])
-def buy():
-    """ buy request
-
-    curl -X POST -H 'Content-Type: application/json' -d '{"Tid":"1","Badge":"4285702E","Product":"5","Time":"53677","Hash":"4527E4199D78DC12"}' http://localhost:5000/buy
+@app.route("/user", methods=['POST'])
+def getUser():
+    """ Get user request
     
 
-    :return: JSON request tous les capteurs de la classe
+    :return: JSON 
     """
     dict_req = request.get_json()
 
     try:
         termid = dict_req['Tid']
         badge = dict_req['Badge']
-        product = dict_req['Product']
+        sent_hash = dict_req['Hash']
+    except KeyError:
+        return json.dumps({"DrinkingBuddy user error": "Unknown key(s)"})
+
+    try:
+       time_req = dict_req['Time']
+    except KeyError:
+       time_req = 0
+
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+
+    sipout = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+
+    now = round(time.time())
+
+    hash_verif = badge + str(time_req)
+    for c in hash_verif:
+        sipin.update(binascii.a2b_qp(c))
+
+    #reqHash = hex(sipin.hash())[2:-1].upper() #This change does not work on Coltello
+    reqHash = hex(sipin.hash())[2:].upper()
+    reqHash = reqHash.zfill(16)
+    badgeId = int(badge, 16)
+
+    if dict_req['Hash'] == reqHash:
+        print("Cool hash's OK")
+        print("Get user badge: " + str(badgeId))
+    else:
+        print("Pas Cool !!!!!!!!!!")
+   
+    element = session.query(User, User.name).join(Card).filter(User.id == Card.user_id, Card.id == badgeId, User.type == 1)
+    if element.count() == 0:
+        messages = ['ERROR', 'UNKNOWN USER']
+        ret = {'Melody': "c5", 'Message': messages, 'Time': now}
+    else:
+        messages = [element.one().name, "{:.2f}".format(100/100)] #TEMP the 100/100 should be replaced by group ID or other info
+        ret = {'Melody': "a1c1a1c1a1c1a1c1", 'Message': messages, 'Time': now}
+    
+    
+    hash_str = ret['Melody'] + element.one().name + now.__str__()
+    for c in hash_str:
+        sipout.update(binascii.a2b_qp(c))
+
+    #retHash = hex(sipout.hash())[2:-1].upper()  #This change does not work on Coltello works on PI
+    retHash = hex(sipout.hash())[2:].upper()
+    retHash = retHash.zfill(16)
+
+    ret['Hash'] = retHash
+
+    return json.dumps(ret)
+
+
+@app.route("/add", methods=['POST'])
+def add():
+    """ add request
+    
+    
+
+    :return: JSON 
+    """
+    dict_req = request.get_json()
+
+    try:
+        termid = dict_req['Tid']
+        badge = dict_req['Badge']
+        product = dict_req.get('Product')
+        barcode = dict_req.get('Barcode')
+        item_count = dict_req.get('item_count')
         time_req = dict_req['Time']
         sent_hash = dict_req['Hash']
     except KeyError:
-        return json.dumps({"DrinkingBuddy buy error": "Unknown key(s)"})
+        return json.dumps({"DrinkingBuddy add error": "Unknown key(s)"})
+    if not product and not barcode:
+        return json.dumps({"DrinkingBuddy add error": "Missing barcode or product ID"})
+
+    if not item_count:
+        item_count = 1
+
+    if not product:
+        useBarcode = True
+    else:
+        useBarcode = False
+
+    print(dict_req)
 
     query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
 
@@ -134,9 +227,15 @@ def buy():
     now = round(time.time())
 
     if app.debug:
-        print("Buying: " + product + " Badge: " + badge)
+        if useBarcode:
+            print("Adding: " + barcode + " Badge: " + badge)
+        else:
+            print("Adding: " + product + " Badge: " + badge)
 
-    hash_verif = badge + str(product) + str(time_req)
+    if useBarcode:
+        hash_verif = badge + str(barcode) + str(time_req)
+    else:
+        hash_verif = badge + str(product) + str(time_req)
     for c in hash_verif:
         sipin.update(binascii.a2b_qp(c))
 
@@ -152,12 +251,134 @@ def buy():
         return json.dumps({"DrinkingBuddy error": "Hash error "+str(req_hash)})
 
     if app.debug:
-        print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
+        if useBarcode:
+             print(badge + " " + barcode + " " + time_req + " " + dict_req['Hash'])
+        else:
+             print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
 
     try:
         currentUser = session.query(User).join(Card).filter(Card.user_id == User.id, Card.id == int(badge, 16)).one()
-        currentItem = session.query(Item).filter(Item.id == int(product)).one()
+        if useBarcode:
+            currentItem = session.query(Item).filter(Item.barcode == barcode).one()
+        else:
+            currentItem = session.query(Item).filter(Item.id == int(product)).one()
     except exc.NoResultFound:
+        print("SQL Error in add")
+        return json.dumps({"DrinkingBuddy add sql error": "No result found"})
+
+    currentItem.quantity = currentItem.quantity + item_count
+
+
+    response = []
+    
+    # TODO check currentUser to know if he can add items
+    if(currentUser.type != 1):
+        session.rollback()
+        print('product not in stock anymore' + str(currentItem.price) + " " + currentItem.name + "  " + str(currentItem.quantity))
+        response = {'Melody': "b2c3b2", 'Message': ['ERROR', 'User cannot add items'], 'Time': now.__str__()}
+    else:
+        print([currentUser.name, "{:.2f}".format(currentUser.balance/100)])
+        # new_transaction = Transaction(date = datetime.datetime.now(), value = 1, user = currentUser, element = currentItem)
+        new_transaction = Transaction(date=datetime.datetime.now(), value=1, user=currentUser)
+        new_transactionitem = TransactionItem(date=datetime.datetime.now(),
+                                              quantity=-item_count,
+                                              price_per_item=currentItem.price,
+                                              canceled_date=None,
+                                              element_id=currentItem.id,
+                                              transaction=new_transaction)
+        session.add(new_transaction)
+        session.add(new_transactionitem)
+        response = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull transaction', 'Have a nice day'], 'Time': now.__str__()}
+        session.commit()
+        print(response);
+    hash_str = response['Melody'] + "".join(response['Message']) + now.__str__()
+    for c in hash_str:
+        sipout.update(binascii.a2b_qp(c))
+
+    #retHash = hex(sipout.hash())[2:-1].upper()  #This change not working on Coltello, works on Raspbbery
+    retHash = hex(sipout.hash())[2:].upper()
+    retHash = retHash.zfill(16)
+
+    response['Hash'] = retHash
+
+    return json.dumps(response)
+
+@app.route("/buy", methods=['POST'])
+def buy():
+    """ buy request
+
+    curl -X POST -H 'Content-Type: application/json' -d '{"Tid":"1","Badge":"4285702E","Product":"5","Time":"53677","Hash":"4527E4199D78DC12"}' http://localhost:5000/buy
+    
+
+    :return: JSON request tous les capteurs de la classe
+    """
+    dict_req = request.get_json()
+
+    try:
+        termid = dict_req['Tid']
+        badge = dict_req['Badge']
+        product = dict_req.get('Product')
+        barcode = dict_req.get('Barcode')
+        time_req = dict_req['Time']
+        sent_hash = dict_req['Hash']
+    except KeyError:
+        return json.dumps({"DrinkingBuddy buy error": "Unknown key(s)"})
+
+    if not product and not barcode:
+        return json.dumps({"DrinkingBuddy buy error": "Missing barcode or product ID"})
+
+    if not product:
+        useBarcode = True
+    else:
+        useBarcode = False
+
+    print(dict_req)
+
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+
+    sipout = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+
+    now = round(time.time())
+
+    if app.debug:
+        if useBarcode:
+            print("Buying: " + barcode + " Badge: " + badge)
+        else:
+            print("Buying: " + product + " Badge: " + badge)
+
+    if useBarcode:
+        hash_verif = badge + str(barcode) + str(time_req)
+    else:
+        hash_verif = badge + str(product) + str(time_req)
+    for c in hash_verif:
+        sipin.update(binascii.a2b_qp(c))
+
+    req_hash = hex(sipin.hash())[2:].upper()
+    req_hash = req_hash.zfill(16)
+
+    if sent_hash == req_hash:
+        if app.debug and DEVEL_TEST:
+            print("Cool hash's OK and is "+str(req_hash))
+    else:
+        if app.debug:
+            print("Hash pas Cool !!!!!!!!!!")
+        return json.dumps({"DrinkingBuddy error": "Hash error "+str(req_hash)})
+
+    if app.debug:
+        if useBarcode:
+             print(badge + " " + barcode + " " + time_req + " " + dict_req['Hash'])
+        else:
+             print(badge + " " + product + " " + time_req + " " + dict_req['Hash'])
+
+    try:
+        currentUser = session.query(User).join(Card).filter(Card.user_id == User.id, Card.id == int(badge, 16)).one()
+        if useBarcode:
+            currentItem = session.query(Item).filter(Item.barcode == barcode.strip()).one()
+        else:
+            currentItem = session.query(Item).filter(Item.id == int(product)).one()
+    except exc.NoResultFound:
+        print("SQL Error in buy")
         return json.dumps({"DrinkingBuddy buy sql error": "No result found"})
 
     currentItem.quantity = currentItem.quantity - 1
@@ -190,7 +411,7 @@ def buy():
         #    currentUser.balance = currentUser.balance + currentItem.price #Give back the money
         #    ret = {'Melody': "2d2a1f2c2d2a2d2c2f2d2a2c2d2a1f2c2d2a2a2g2p8p8p8p", 'Message': ['YOU WON!!! :)', 'FREE BEER!'], 'Time': now.__str__()}
         session.commit()
-
+        print(response);
     hash_str = response['Melody'] + "".join(response['Message']) + now.__str__()
     for c in hash_str:
         sipout.update(binascii.a2b_qp(c))
@@ -200,6 +421,11 @@ def buy():
     retHash = retHash.zfill(16)
 
     response['Hash'] = retHash
+    if currentItem.category_id == 1 or currentItem.category_id == 2:
+        print("Opening fridge by MQTT")
+        client.connect(broker)#connect
+        client.publish("Fridge","5")#publish
+        client.disconnect()
 
     return json.dumps(response)
 
@@ -207,20 +433,23 @@ def buy():
 @app.route("/balance", methods=['POST'])
 def getBalance():
     """ Get balance request
-
-
-    :return: JSON request tous les capteurs de la classe
     """
-    sipout = siphash.SipHash_2_4(key)
-    sipin = siphash.SipHash_2_4(key)
+    dict_req = request.get_json()
+    try:
+        termid = dict_req['Tid']
+        badge = dict_req['Badge']
+        time_req = dict_req['Time']
+
+    except KeyError:
+        return json.dumps({"DrinkingBuddy sync error": "Unknown terminal ID or key"})
+
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    sipout = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
 
     now = round(time.time())
 
 #    if request._headers['Content-Type'] == 'application/json':
-    dict_req = request.get_json()
-
-    badge = dict_req['Badge']
-    time_req = dict_req['Time']
 
     hash_verif = badge + time_req
     for c in hash_verif:
@@ -229,14 +458,16 @@ def getBalance():
     #reqHash = hex(sipin.hash())[2:-1].upper() #This change does not work on Coltello
     reqHash = hex(sipin.hash())[2:].upper()
     reqHash = reqHash.zfill(16)
+    badgeId = int(badge, 16)
+
 
     if dict_req['Hash'] == reqHash:
         print("Cool hash's OK")
+        print("Get user badge: " + str(badgeId))
     else:
         print("Pas Cool !!!!!!!!!!")
 
-    badgeId = int(badge, 16)
-    element = session.query(User, User.name, User.balance).filter(User.id == badgeId)
+    element = session.query(User, User.name, User.balance).join(Card).filter(User.id == Card.user_id, Card.id == badgeId)
     if element.count() == 0:
         messages = ['ERROR', 'UNKNOWN USER']
         ret = {'Melody': "c5", 'Message': messages, 'Time': now}
