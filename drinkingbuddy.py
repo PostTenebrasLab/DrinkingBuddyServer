@@ -35,8 +35,8 @@ try:
     # defines variables to not push on github
     import localconfig
     dbpath = localconfig.dbpath
-    dbuser = localconfig.dbconfig
-    dbpasswd = localconfig.dbconfig
+    dbuser = localconfig.dbuser
+    dbpasswd = localconfig.dbpasswd
 except:
     # use default development test values
     # dev path to DB in same dir as script
