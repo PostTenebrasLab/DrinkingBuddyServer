@@ -592,22 +592,30 @@ def getLocker():
     reqHash = reqHash.zfill(16)
     badgeId = int(badge, 16)
 
+    # check input hash.
+    hash_ok = False
     if dict_req['Hash'] == reqHash:
         print("Cool hash's OK")
         print("Get user badge: " + str(badgeId))
+        hash_ok = True
     else:
         print("Pas Cool !!!!!!!!!!")
-
-    # get Locker matching user for requested badge ID
-    element = session.query(Locker, Locker.id).join(User).join(Card).filter(
-        User.id == Card.user_id, Card.id == badgeId, Locker.user_id == User.id)
-    if element.count() == 0:
-        messages = ['ERROR', 'UNKNOWN USER']
+        messages = ['ERROR', 'HASH DOES NOT MATCH']
         ret = {'Melody': "c5", 'Message': messages, 'Time': now}
-    else:
-        messages = ["{}".format(x.id) for x in element]
-        ret = {'Melody': "a1a1a1c1c1c1a1c1", 'Message': messages, 'Time': now}
 
+    if hash_ok:
+        # get Locker matching user for requested badge ID
+        element = session.query(Locker, Locker.id).join(User).join(Card).filter(
+            User.id == Card.user_id, Card.id == badgeId, Locker.user_id == User.id)
+        if element.count() == 0:
+            messages = ['ERROR', 'UNKNOWN USER, CARD OR LOCKER']
+            ret = {'Melody': "c5", 'Message': messages, 'Time': now}
+        else:
+            messages = ["{}".format(x.id) for x in element]
+            ret = {'Melody': "a1a1a1c1c1c1a1c1",
+                   'Message': messages, 'Time': now}
+
+    # Prepare output hash
     hash_str = ret['Melody'] + "".join(messages) + now.__str__()
     for c in hash_str:
         sipout.update(binascii.a2b_qp(c))
@@ -616,6 +624,8 @@ def getLocker():
     retHash = retHash.zfill(16)
 
     ret['Hash'] = retHash
+
+    # return output
     print(json.dumps(ret))
     return json.dumps(ret)
 
