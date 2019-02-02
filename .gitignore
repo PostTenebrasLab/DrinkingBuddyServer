@@ -5,7 +5,7 @@
 
 drinkingBuddy.db
 db.db
-
+localconfig.py
 
 # User-specific stuff:
 .idea/workspace.xml
