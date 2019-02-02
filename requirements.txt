@@ -1,6 +1,6 @@
 siphash
 Flask
-Flask-RESTful
+flask_restful
 Flask-CORS
 sqlalchemy
 flask_sqlalchemy

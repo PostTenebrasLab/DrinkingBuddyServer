@@ -9,19 +9,22 @@ from sqlalchemy import create_engine
 from marshmallow import Schema, fields
 from flask_sqlalchemy import SQLAlchemy
 from flask_marshmallow import Marshmallow
- 
+
 Base = declarative_base()
- 
+
+
 class Category(Base):
     __tablename__ = 'categories'
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
+
 
 class Terminal(Base):
     __tablename__ = 'terminals'
     id = Column(Integer, primary_key=True)
     name = Column(String(50), nullable=False)
     key = Column(String(64), nullable=False)
+
 
 class Functionality(Base):
     __tablename__ = 'functionalities'
@@ -30,6 +33,7 @@ class Functionality(Base):
     category = relationship(Category)
     terminal_id = Column(Integer, ForeignKey('terminals.id'))
     terminal = relationship(Terminal)
+
 
 class Item(Base):
     __tablename__ = 'items'
@@ -43,6 +47,7 @@ class Item(Base):
     category_id = Column(Integer, ForeignKey('categories.id'))
     category = relationship(Category)
 
+
 class User(Base):
     __tablename__ = 'users'
     id = Column(Integer, primary_key=True)
@@ -50,8 +55,15 @@ class User(Base):
     balance = Column(Integer)
     type = Column(Integer)
 
+
 class Card(Base):
     __tablename__ = 'cards'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    user = relationship(User)
+
+class Locker(Base):
+    __tablename__ = 'locker'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship(User)
@@ -77,35 +89,34 @@ class TransactionItem(Base):
     element = relationship(Item)
     transaction_id = Column(Integer, ForeignKey('transactions.id'))
     transaction = relationship(Transaction)
- 
+
+
 class UserSchema(Schema):
 
-	class Meta:
-		fields = ("id", "name", "balance")
+        class Meta:
+                fields = ("id", "name", "balance")
 
 
 class ItemSchema(Schema):
 
-	class Meta:
-		fields = ("id", "name")
+        class Meta:
+                fields = ("id", "name")
 
 
 class TransactionItemSchema(Schema):
     element = fields.Nested(ItemSchema)
+
     class Meta:
         fields = ("id", "date", "value", "element_id", "element")
 
 
 class TransactionSchema(Schema):
-	user = fields.Nested(UserSchema)
-	transactionItems = fields.Nested(TransactionItemSchema, many=True)
-	class Meta:
-		fields = ("id", "date", "value", "user_id", "user", "transactionItems")
+        user = fields.Nested(UserSchema)
+        transactionItems = fields.Nested(TransactionItemSchema, many=True)
 
+        class Meta:
+                fields = ("id", "date", "value", "user_id", "user", "transactionItems")
 
-		
-	
-#Create Database
-engine = create_engine("sqlite:///db.db", echo=True)
-Base.metadata.create_all(engine)
-
+# Create Database
+# engine = create_engine("sqlite:///db.db", echo=True)
+# Base.metadata.create_all(engine)
