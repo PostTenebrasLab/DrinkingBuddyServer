@@ -451,7 +451,7 @@ def buy():
         session.add(new_transaction)
         session.add(new_transactionitem)
         response = {'Melody': "a1b1c1d1e1f1g1", 'Message': [
-            'Successfull transaction', currentItem.name], 'Time': now.__str__()}
+            'Successfull transaction', currentItem.name], 'Time': now.__str__(), 'ItemPrice':currentItem.price}
         # if(randint(1,20) != 20 & currentItem.category_id == 2) #If 20 (5% chance) then we give a free beer!  ----> Syntax needs to be corrected
         #    currentUser.balance = currentUser.balance + currentItem.price #Give back the money
         #    ret = {'Melody': "2d2a1f2c2d2a2d2c2f2d2a2c2d2a1f2c2d2a2a2g2p8p8p8p", 'Message': ['YOU WON!!! :)', 'FREE BEER!'], 'Time': now.__str__()}
