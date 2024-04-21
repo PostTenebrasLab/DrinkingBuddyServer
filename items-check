@@ -1,0 +1,41 @@
+#!/bin/bash
+# items-report - report the quantity of items stored in drinkingbuddy
+#
+# Usage - items-report
+#
+# NOTE: exit code is 1 if there are items with lower than minimum quantities
+#
+# Erik Rossen <rossen@rossen.ch>
+
+DB=/data/www_app/drinkingbuddy/drinkingBuddy.db
+DIR=/data/www_app/drinkingbuddy/items-report.d
+
+mkdir -p $DIR
+cd $DIR || exit 1
+
+sqlite3 $DB 'select name,quantity from items where quantity < minquantity;' > low.txt
+
+sqlite3 $DB 'select name,quantity from items where quantity >= minquantity and category_id in (1,2);' > all.txt
+
+echo 'Total credit of members in system:' >> all.txt
+
+#sqlite3 $DB "select sum(balance)/100 from users where name <> 'Cash Pay Only';" >> all.txt
+sqlite3 $DB "select sum(balance)/100.0 from users where id <> 16;" >> all.txt
+
+echo 'Total stock value (beer tap excluded):' >> all.txt
+
+#sqlite3 $DB 'select sum(quantity * price / 100) from items where category_id in (1,2);' >> all.txt
+sqlite3 $DB 'select sum(quantity * price)/100.0 from items where category_id in (1,2)  and quantity > 0 and id <> 42;' >> all.txt
+
+if [ -n "$(cat low.txt)" ] ; then
+	echo WARNING: The following items are in low supply:
+	cat low.txt
+	echo
+	echo
+	echo INVENTORY
+	cat all.txt 
+	exit 1
+else
+	echo INVENTORY
+	cat all.txt 
+fi

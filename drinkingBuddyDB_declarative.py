@@ -54,6 +54,7 @@ class User(Base):
     name = Column(String(50))
     balance = Column(Integer)
     type = Column(Integer)
+    ldap_user = Column(String(50))
 
 
 class Card(Base):
@@ -65,6 +66,7 @@ class Card(Base):
 class Locker(Base):
     __tablename__ = 'locker'
     id = Column(Integer, primary_key=True)
+    lockername = Column(String(2))
     user_id = Column(Integer, ForeignKey('users.id'))
     user = relationship(User)
 

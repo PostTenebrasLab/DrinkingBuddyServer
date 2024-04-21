@@ -1,0 +1,14 @@
+#!/bin/bash
+# transaction-report - report the transactions stored in drinkingbuddy
+#
+# Usage - transaction-report
+#
+# Michael Jaussi <michael.jaussi@gmail.com>
+
+DB=/data/www_app/drinkingbuddy/drinkingBuddy.db
+
+
+TODAY=$(date +%F)
+
+sqlite3 $DB "select t.id, t.date, u.name, i.name, ti.quantity from transactions t, transaction_items ti, items i, users u where t.date > date('$TODAY', '-7 days') and t.date <= '$TODAY 23:59:59' and ti.element_id = i.id and t.id = ti.transaction_id and t.user_id = u.id and ti.canceled = 0;" 
+

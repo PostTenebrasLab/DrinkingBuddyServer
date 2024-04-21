@@ -26,7 +26,7 @@ from sqlalchemy.sql import func
 from drinkingBuddyDB_declarative import Base, Category, Item, Terminal, Card, User, Transaction, TransactionItem, Functionality, Locker
 from collections import OrderedDict
 from random import randint
-import paho.mqtt.client as paho
+#import paho.mqtt.client as paho
 #from flask_simpleldap import LDAP
 from pprint import pprint
 
@@ -40,7 +40,7 @@ try:
 except:
     # use default development test values
     # dev path to DB in same dir as script
-    dbpath = 'sqlite:///drinkingBuddy.db'
+    dbpath = 'sqlite:////data/drinkingBuddy.db'
     dbuser = "ptllocker1"
     dbpasswd = "P0stL0ck"
 
@@ -71,8 +71,8 @@ app.config['LDAP_PASSWORD'] = 'password'
 broker = "mqtt.lan.posttenebraslab.ch"
 
 # create client object client1.on_publish = on_publish #assign function to callback client1.connect(broker,port) #establish connection$
-client = paho.Client("client-001")
-client.username_pw_set(dbuser, dbpasswd)
+#client = paho.Client("client-001")
+#client.username_pw_set(dbuser, dbpasswd)
 #print("publishing ")
 # client.disconnect() #disconnect
 
@@ -80,8 +80,8 @@ client.username_pw_set(dbuser, dbpasswd)
 #ldap = LDAP(app)
 
 
-app.debug = True
-DEVEL_TEST = True
+#app.debug = True
+#DEVEL_TEST = True
 
 
 CORS(app)
@@ -139,6 +139,47 @@ def sync():
         print(response['Hash'])
 
     return json.dumps(response)
+
+@app.route("/gettime", methods=['POST'])
+def gettime():
+    """ return drinks catalog based on terminal id
+
+    curl -X POST -H 'Content-Type: application/json' -d '{"Tid":"1"}' http://localhost:5000/time
+
+    :return: JSON request toutes les categories accessible a un terminal
+    """
+    dict_req = request.get_json()
+
+    try:
+        termid = dict_req['Tid']
+    except KeyError:
+        return json.dumps({"DrinkingBuddy sync error": "Unknown terminal ID or key"})
+
+    query_key = session.query(Terminal, Terminal.key).filter(
+        Terminal.id == termid).one()
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+
+    now = round(time.time())
+
+    response = {'Header': "DrinkingBuddy", 'Melody': 'c1', 'Time': now}
+
+    hash_str = response['Header']
+    hash_str += now.__str__()
+
+    for c in hash_str:
+        sipin.update(binascii.a2b_qp(c))
+
+    reqHash = hex(sipin.hash())[2:].upper()
+    reqHash = reqHash.zfill(16)
+
+    response['Hash'] = reqHash
+
+    if app.debug:
+        print(hash_str)
+        print(response['Hash'])
+
+    return json.dumps(response)
+
 
 
 @app.route("/user", methods=['POST'])
@@ -397,8 +438,8 @@ def buy():
             print("Cool hash's OK and is "+str(req_hash))
     else:
         if app.debug:
-            print("Hash pas Cool !!!!!!!!!!")
-        return json.dumps({"DrinkingBuddy error": "Hash error "+str(req_hash)})
+            print("Hash pas Cool !!!!!!!!!!" + str(req_hash))
+        #return json.dumps({"DrinkingBuddy error": "Hash error "+str(req_hash) + "  " + str(sent_hash)})
 
     if app.debug:
         if useBarcode:
@@ -467,11 +508,11 @@ def buy():
     retHash = retHash.zfill(16)
 
     response['Hash'] = retHash
-    if currentItem.category_id == 1 or currentItem.category_id == 2:
-        print("Opening fridge by MQTT")
-        client.connect(broker)  # connect
-        client.publish("Fridge", "5")  # publish
-        client.disconnect()
+#    if currentItem.category_id == 1 or currentItem.category_id == 2:
+#        print("Opening fridge by MQTT")
+#        client.connect(broker)  # connect
+#        client.publish("Fridge", "5")  # publish
+#        client.disconnect()
 
     return json.dumps(response)
 
@@ -522,11 +563,11 @@ def getBalance():
         messages = [element.one().name, "{:.2f}".format(
             element.one().balance/100)]
         ret = {'Melody': "a1c1a1c1a1c1a1c1", 'Message': messages, 'Time': now}
-        if termid == "4":  # we only want to open if the terminal is a barcode terminal, and only if it is sucessful
-            print("Opening fridge by MQTT")
-            client.connect(broker)  # connect
-            client.publish("Fridge", "9")  # publish
-            client.disconnect()
+#        if termid == "4":  # we only want to open if the terminal is a barcode terminal, and only if it is sucessful
+#            print("Opening fridge by MQTT")
+#            client.connect(broker)  # connect
+#            client.publish("Fridge", "9")  # publish
+#            client.disconnect()
 
     hash_str = ret['Melody'] + "".join(messages) + now.__str__()
     for c in hash_str:
@@ -605,13 +646,13 @@ def getLocker():
 
     if hash_ok:
         # get Locker matching user for requested badge ID
-        element = session.query(Locker, Locker.id).join(User).join(Card).filter(
+        element = session.query(Locker, Locker.lockername).join(User).join(Card).filter(
             User.id == Card.user_id, Card.id == badgeId, Locker.user_id == User.id)
         if element.count() == 0:
             messages = ['ERROR', 'UNKNOWN USER, CARD OR LOCKER']
             ret = {'Melody': "c5", 'Message': messages, 'Time': now}
         else:
-            messages = ["{}".format(x.id) for x in element]
+            messages = ["{}".format(x.lockername) for x in element]
             ret = {'Melody': "a1a1a1c1c1c1a1c1",
                    'Message': messages, 'Time': now}
 
@@ -651,6 +692,15 @@ def getBeverages():
     return json.dumps(beverages)
 
 
+@app.route("/beverages/<barcode>", methods=['GET'])
+def getBeverageBarcode(barcode):
+    try:
+        beverage = session.query(Item).filter(Item.barcode == barcode).one()
+        return json.dumps(serialize(beverage))
+    except exc.NoResultFound:
+        return json.dumps(None)
+
+
 @app.route("/beverages", methods=['POST'])
 def postBeverages():
     data = request.get_json(force=True)
@@ -659,6 +709,98 @@ def postBeverages():
     session.add(beverage)
     session.commit()
     return json.dumps(serialize(beverage))
+
+@app.route("/addcents", methods=['POST'])
+def addcents():
+    """ addcents request
+
+    curl -X POST -H 'Content-Type: application/json' -d '{"Tid":"1","Badge":"4285702E","Cents":"5","Time":"53677","Hash":"4527E4199D78DC12"}' http://localhost:5000/addcents
+
+
+    :return: JSON request tous les capteurs de la classe
+    """
+    dict_req = request.get_json()
+
+    try:
+        termid = dict_req['Tid']
+        badge = dict_req['Badge']
+        cents = dict_req.get('Cents')
+        time_req = dict_req['Time']
+        sent_hash = dict_req['Hash']
+    except KeyError:
+        return json.dumps({"DrinkingBuddy addcents error": "Unknown key(s)"})
+
+    if not cents or not badge:
+        return json.dumps({"DrinkingBuddy addcents error": "Missing cents or badge id"})
+
+    if int(cents) < 0:
+        return json.dumps({"DrinkingBuddy addcents error": "cents cannot be negative"})
+
+    print(dict_req)
+
+    query_key = session.query(Terminal, Terminal.key).filter(Terminal.id == termid).one()
+
+    sipout = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    sipin = siphash.SipHash_2_4(bytearray(str(query_key.key).encode("utf-8")))
+    now = round(time.time())
+
+    if app.debug:
+        print("Adding cents: " + str(cents) + " Badge: " + badge)
+
+    hash_verif = badge + str(cents) + str(time_req)
+    for c in hash_verif:
+        sipin.update(binascii.a2b_qp(c))
+
+    req_hash = hex(sipin.hash())[2:].upper()
+    req_hash = req_hash.zfill(16)
+
+    if sent_hash == req_hash:
+        if app.debug and DEVEL_TEST:
+            print("Cool hash's OK and is "+str(req_hash))
+    else:
+        if app.debug:
+            print("Hash pas Cool !!!!!!!!!!" + str(req_hash))
+        return json.dumps({"DrinkingBuddy error": "Hash error "+str(req_hash) + "  " + str(sent_hash)})
+
+    if app.debug:
+        print(badge + " " + str(cents) + " " + time_req + " " + dict_req['Hash'])
+
+    try:
+        currentUser = session.query(User).join(Card).filter(
+            Card.user_id == User.id, Card.id == int(badge, 16)).one()
+    except exc.NoResultFound:
+        print("SQL Error in addcents getting user")
+        return json.dumps({"DrinkingBuddy addcents sql error": "No result found"})
+
+    currentUser.balance = currentUser.balance + int(cents)
+
+    response = []
+    print([currentUser.name, "{:.2f}".format(currentUser.balance/100)])
+
+    new_transaction = Transaction(
+        date=datetime.datetime.now(), value=1, user=currentUser)
+    new_transactionitem = TransactionItem(date=datetime.datetime.now(),
+                                          quantity=int(cents),
+                                          price_per_item=-1,
+                                          canceled_date=None,
+                                          element_id=1000,
+                                          transaction=new_transaction)
+    session.add(new_transaction)
+    session.add(new_transactionitem)
+    response = {'Melody': "a1b1c1d1e1f1g1", 'Message': ['Successfull add cents', str(cents)], 'Time': now.__str__()}
+    session.commit()
+    print(response)
+    hash_str = response['Melody'] + \
+        "".join(response['Message']) + now.__str__()
+    for c in hash_str:
+        sipout.update(binascii.a2b_qp(c))
+
+    retHash = hex(sipout.hash())[2:].upper()
+    retHash = retHash.zfill(16)
+
+    response['Hash'] = retHash
+    return json.dumps(response)
+
 
 # class BeverageListResource(Resource):
 #
@@ -678,8 +820,7 @@ def postBeverages():
 
 class BeverageResource(Resource):
     def get(self, beverage_id):
-        beverage = serialize(session.query(
-            Item).filter(Item.id == beverage_id).one())
+        beverage = serialize(session.query(Item).filter(Item.id == beverage_id).one())
         return beverage
 
     def post(self, beverage_id):
@@ -705,7 +846,7 @@ class UserListResource(Resource):
 class UserResource(Resource):
     def get(self, user_id):
         user = serialize(session.query(User).filter(User.id == user_id).one())
-        return serialize(user)
+        return user
 
 
 class TransactionListResource(Resource):

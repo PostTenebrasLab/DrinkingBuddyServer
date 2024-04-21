@@ -1,9 +1,9 @@
-siphash
-Flask
-flask_restful
-Flask-CORS
+marshmallow
+flask
 sqlalchemy
-flask_sqlalchemy
-flask_marshmallow
-flask-simpleldap
 marshmallow-sqlalchemy
+flask_marshmallow
+flask_sqlalchemy
+flask_restful
+flask_cors
+siphash
