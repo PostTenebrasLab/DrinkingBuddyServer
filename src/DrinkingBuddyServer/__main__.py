@@ -22,8 +22,8 @@ from sqlalchemy.orm import relationship, joinedload, lazyload
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, exc, class_mapper
 from sqlalchemy.sql import func
-# from drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
-from drinkingBuddyDB_declarative import Base, Category, Item, Terminal, Card, User, Transaction, TransactionItem, Functionality, Locker
+# from .drinkingBuddyDB_declarative import Base, Category, Inventory, User, Transaction, TransactionSchema
+from .drinkingBuddyDB_declarative import Base, Category, Item, Terminal, Card, User, Transaction, TransactionItem, Functionality, Locker
 from collections import OrderedDict
 from random import randint
 #import paho.mqtt.client as paho

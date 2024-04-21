@@ -1,0 +1,15 @@
+[project]
+name = "DrinkingBuddyServer"
+dynamic = ["version"]
+requires-python = ">=3.12"
+dependencies = [
+    "flask",
+    "flask_cors",
+    "flask_marshmallow",
+    "flask_restful",
+    "flask_sqlalchemy",
+    "marshmallow",
+    "marshmallow-sqlalchemy",
+    "siphash",
+    "sqlalchemy",
+]
