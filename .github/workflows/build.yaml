@@ -2,7 +2,7 @@ on:
 - push
 env:
   REGISTRY: ghcr.io/${{ github.repository }}
-  TAG: ${{ env.REGISTRY }}:${{ github.ref_name }}
+  TAG: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
 jobs:
   build:
     runs-on: ubuntu-latest
