@@ -13,13 +13,21 @@ jobs:
     - uses: actions/checkout@v4
     - run: >
         podman login
-        --username '${{ github.actor }}'
-        --password '${{ github.token }}'
-        "${REGISTRY,,}"
+          --username '${{ github.actor }}'
+          --password '${{ github.token }}'
+          "${REGISTRY,,}"
     - run: >
         podman build
-        --tag "${TAG,,}"
-        .
+          --tag "${TAG,,}"
+          .
     - run: >
         podman push
-        "${TAG,,}"
+          "${TAG,,}"
+    - if: ${{ github.ref_name == github.event.repository.default_branch }}
+      run: >
+        podman tag
+          "${TAG,,}"
+          "${REGISTRY,,}":latest
+        &&
+        podman push
+          "${REGISTRY,,}":latest
