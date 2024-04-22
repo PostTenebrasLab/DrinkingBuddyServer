@@ -3,14 +3,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      STORAGE_DRIVER: vfs
     container:
       image: quay.io/podman/stable
       env:
         REGISTRY: ghcr.io/${{ github.repository }}
         TAG: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
-      options: --security-opt seccomp=unconfined
+      options: --privileged
     steps:
     - uses: actions/checkout@v4
     - run: >
