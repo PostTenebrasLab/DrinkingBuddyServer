@@ -1,20 +1,22 @@
 on:
 - push
+env:
+  REGISTRY: ghcr.io/${{ github.repository }}
+  TAG: ${{ env.REGISTRY }}:${{ github.ref_name }}
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - id: buildah
-      uses: redhat-actions/buildah-build@v2
-      with:
-        image: ghcr.io/${{ github.repository }}
-        tags: ${{ github.ref_name }}
-        containerfiles: Containerfile
-    - uses: redhat-actions/push-to-registry@v2
-      with:
-        image: ${{ steps.buildah.outputs.image }}
-        tags: ${{ steps.buildah.outputs.tags }}
-        registry: ghcr.io/${{ github.repository_owner }}
-        username: ${{ github.actor }}
-        password: ${{ github.token }}
+    - run: |
+        podman login
+        --username ${{ github.actor }}
+        --password ${{ github.token }}
+        ${{ env.REGISTRY }}
+    - run: |
+        podman build
+        --tag ${{ env.TAG }}
+        .
+    - run: |
+        podman push
+        ${{ env.TAG }}
