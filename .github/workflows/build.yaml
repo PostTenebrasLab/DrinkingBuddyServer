@@ -8,15 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - run: |
+    - run: >
         podman login
         --username ${{ github.actor }}
         --password ${{ github.token }}
         ${{ env.REGISTRY }}
-    - run: |
+    - run: >
         podman build
         --tag ${{ env.TAG }}
         .
-    - run: |
+    - run: >
         podman push
         ${{ env.TAG }}
