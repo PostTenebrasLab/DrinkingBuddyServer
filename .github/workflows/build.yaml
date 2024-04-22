@@ -3,6 +3,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      STORAGE_DRIVER: vfs
     container:
       image: quay.io/podman/stable
       env:
