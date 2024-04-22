@@ -10,13 +10,13 @@ jobs:
     - uses: actions/checkout@v4
     - run: >
         podman login
-        --username ${{ github.actor }}
-        --password ${{ github.token }}
-        ${{ env.REGISTRY }}
+        --username '${{ github.actor }}'
+        --password '${{ github.token }}'
+        "${REGISTRY,,}"
     - run: >
         podman build
-        --tag ${{ env.TAG }}
+        --tag "${TAG,,}"
         .
     - run: >
         podman push
-        ${{ env.TAG }}
+        "${TAG,,}"
