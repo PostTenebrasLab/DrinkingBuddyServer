@@ -18,6 +18,7 @@ jobs:
         "${REGISTRY,,}"
     - run: >
         podman build
+        --tag "${REGISTRY,,}"
         --tag "${TAG,,}"
         .
     - run: >
@@ -25,9 +26,5 @@ jobs:
         "${TAG,,}"
     - if: ${{ github.ref_name == github.event.repository.default_branch }}
       run: >
-        podman tag
-        "${TAG,,}"
-        "${REGISTRY,,}":latest
-        &&
         podman push
-        "${REGISTRY,,}":latest
+        "${REGISTRY,,}"
