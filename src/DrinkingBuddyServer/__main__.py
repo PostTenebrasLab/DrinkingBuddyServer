@@ -127,12 +127,12 @@ def int_to_base64url(i: int):
 def badge(id: str):
     terminal = basic_auth()
 
-    card_id_bytes = base64url_decode(id)
-    card_id = int.from_bytes(card_id_bytes)
+    badge_id_bytes = base64url_decode(id)
+    card_id = int.from_bytes(badge_id_bytes)
 
     user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == card_id).one_or_none()
     if user is None:
-        flask.abort(HTTPStatus.NOT_FOUND, f"card.id {card_id_bytes.hex()}")
+        flask.abort(HTTPStatus.NOT_FOUND, f"card.id {card_id}")
 
     return dict(
         id=int_to_base64url(user.id),
@@ -149,7 +149,7 @@ def barcode(data: str):
 
     item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == item_barcode).one_or_none()
     if item is None:
-        flask.abort(HTTPStatus.NOT_FOUND, f"item.barcode {item_barcode.hex()}")
+        flask.abort(HTTPStatus.NOT_FOUND, f"item.barcode {item_barcode}")
 
     return dict(
         id=int_to_base64url(item.id),
