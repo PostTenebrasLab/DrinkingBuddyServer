@@ -13,6 +13,7 @@ import siphash
 import binascii
 import os
 import sys
+import urllib
 from http import HTTPStatus
 from decimal import Decimal
 #from datetime import timedelta
@@ -113,46 +114,42 @@ def basic_auth():
 
     return terminal
 
-def base64url_decode(b64: str):
+def base64url_decode(b64: str) -> bytes:
     b64 += '=' * (4 - len(b64) % 4)
     return base64.urlsafe_b64decode(b64)
-def ceil_div(n, d):
+def ceil_div(n: int, d: int) -> int:
     return -(n // -d)
-def int_to_base64url(i: int):
+def int_to_base64url(i: int) -> str:
     bytes_count = ceil_div(i.bit_length(), 8)
-    bs = i.to_bytes(bytes_count)
-    return base64.urlsafe_b64encode(bs).rstrip(b'=').decode('ascii')
+    bites = i.to_bytes(bytes_count)
+    return base64.urlsafe_b64encode(bites).rstrip(b'=').decode('ascii')
 
-@app.route("/badge/<id>", methods=["GET"])
-def badge(id: str):
+@app.route("/lookup", methods=["GET"])
+def lookup():
     terminal = basic_auth()
 
-    badge_id_bytes = base64url_decode(id)
-    card_id = int.from_bytes(badge_id_bytes)
+    query_str = request.args["q"]
 
-    user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == card_id).one_or_none()
-    if user is None:
-        flask.abort(HTTPStatus.NOT_FOUND, f"card.id {card_id}")
+    item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == query_str).one_or_none()
+    if item is not None:
+        return dict(
+            id=int_to_base64url(item.id),
+            name=item.name,
+            cost=item.price,
+        )
 
-    return dict(
-        id=int_to_base64url(user.id),
-        name=user.name,
-        balance=user.balance,
-    )
+    query_bytes = urllib.parse.parse_qs(request.query_string)[b"q"][0]
+    query_int = int.from_bytes(query_bytes)
 
-@app.route("/barcode/<data>", methods=["GET"])
-def barcode(data: str):
-    terminal = basic_auth()
+    user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == query_int).one_or_none()
+    if user is not None:
+        return dict(
+            id=int_to_base64url(user.id),
+            name=user.name,
+            balance=user.balance,
+        )
 
-    item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == data).one_or_none()
-    if item is None:
-        flask.abort(HTTPStatus.NOT_FOUND, f"item.barcode {data}")
-
-    return dict(
-        id=int_to_base64url(item.id),
-        name=item.name,
-        cost=item.price,
-    )
+    flask.abort(HTTPStatus.NOT_FOUND, f"q={query_str}|{query_bytes.hex()}")
 
 
 @app.route("/sync", methods=['POST'])
