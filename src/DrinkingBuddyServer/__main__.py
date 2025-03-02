@@ -5,6 +5,7 @@
 #   Description : Server
 #
 #
+import base64
 import json
 import datetime
 import time
@@ -12,12 +13,16 @@ import siphash
 import binascii
 import os
 import sys
+from http import HTTPStatus
+from decimal import Decimal
 #from datetime import timedelta
+import flask
 from flask import Flask, request, jsonify, Response, g
 from flask_cors import CORS
 from flask_restful import Resource, Api
 from sqlalchemy import Column, ForeignKey, Integer, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship, joinedload, lazyload
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, exc, class_mapper
@@ -87,6 +92,70 @@ broker = "mqtt.lan.posttenebraslab.ch"
 CORS(app)
 
 api = Api(app)
+
+
+def basic_auth():
+    authorization = flask.request.authorization
+    if authorization is None:
+        flask.abort(HTTPStatus.UNAUTHORIZED, "auth-none")
+
+    if authorization.type != "basic":
+        flask.abort(HTTPStatus.UNAUTHORIZED, f"auth-type: {authorization.type}")
+
+    username = authorization.username
+    password = authorization.password
+    terminal = session.query(Terminal, Terminal.id).filter(
+        Terminal.name == username,
+        Terminal.key == password,
+    ).one_or_none()
+    if terminal is None:
+        flask.abort(HTTPStatus.UNAUTHORIZED, f"auth-credentials: {username}:{password}")
+
+    return terminal
+
+def base64url_decode(b64: str):
+    b64 += '=' * (4 - len(b64) % 4)
+    return base64.urlsafe_b64decode(b64)
+def ceil_div(n, d):
+    return -(n // -d)
+def int_to_base64url(i: int):
+    bytes_count = ceil_div(i.bit_length(), 8)
+    bs = i.to_bytes(bytes_count)
+    return base64.urlsafe_b64encode(bs).rstrip(b'=').decode('ascii')
+
+@app.route("/badge/<id>", methods=["GET"])
+def badge(id: str):
+    terminal = basic_auth()
+
+    card_id_bytes = base64url_decode(id)
+    card_id = int.from_bytes(card_id_bytes)
+
+    user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == card_id).one_or_none()
+    if user is None:
+        flask.abort(HTTPStatus.NOT_FOUND, f"card.id {card_id_bytes.hex()}")
+
+    return dict(
+        id=int_to_base64url(user.id),
+        name=user.name,
+        balance=user.balance,
+    )
+
+@app.route("/barcode/<data>", methods=["GET"])
+def barcode(data: str):
+    terminal = basic_auth()
+
+    data_bytes = base64url_decode(data)
+    item_barcode = data_bytes.decode('ascii')
+
+    item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == item_barcode).one_or_none()
+    if item is None:
+        flask.abort(HTTPStatus.NOT_FOUND, f"item.barcode {item_barcode.hex()}")
+
+    return dict(
+        id=int_to_base64url(item.id),
+        name=item.name,
+        cost=item.price,
+    )
 
 
 @app.route("/sync", methods=['POST'])
