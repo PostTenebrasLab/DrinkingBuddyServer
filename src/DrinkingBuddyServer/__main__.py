@@ -135,7 +135,7 @@ def lookup():
         return dict(
             id=int_to_base64url(item.id),
             name=item.name,
-            cost=item.price,
+            value=item.price,
         )
 
     query_bytes = urllib.parse.parse_qs(request.query_string)[b"q"][0]
