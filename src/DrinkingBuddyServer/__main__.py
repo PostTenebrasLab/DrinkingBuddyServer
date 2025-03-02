@@ -144,12 +144,9 @@ def badge(id: str):
 def barcode(data: str):
     terminal = basic_auth()
 
-    data_bytes = base64url_decode(data)
-    item_barcode = data_bytes.decode('ascii')
-
-    item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == item_barcode).one_or_none()
+    item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == data).one_or_none()
     if item is None:
-        flask.abort(HTTPStatus.NOT_FOUND, f"item.barcode {item_barcode}")
+        flask.abort(HTTPStatus.NOT_FOUND, f"item.barcode {data}")
 
     return dict(
         id=int_to_base64url(item.id),
