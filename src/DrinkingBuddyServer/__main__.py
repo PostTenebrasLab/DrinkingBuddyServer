@@ -124,8 +124,8 @@ def int_to_base64url(i: int) -> str:
     bites = i.to_bytes(bytes_count)
     return base64.urlsafe_b64encode(bites).rstrip(b'=').decode('ascii')
 
-@app.route("/lookup", methods=["GET"])
-def lookup():
+@app.route("/search", methods=["GET"])
+def search():
     terminal = basic_auth()
 
     query_str = request.args["q"]
