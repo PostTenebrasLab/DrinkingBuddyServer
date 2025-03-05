@@ -150,24 +150,24 @@ def search():
 
     flask.abort(HTTPStatus.NOT_FOUND, f"q={query_str}|{query_bytes.hex()}")
 
-@app.route("/buy2", methods=["POST"])
-def buy2():
+@app.route("/transact", methods=["POST"])
+def transact():
     terminal = basic_auth()
 
     # trigger an HTTP 400 error if a parameter is missing
     request.args["user"]
-    request.args["product"]
+    request.args["item"]
 
     # query can't be constructed from request.args for non-UTF-8 byte sequences
     query = urllib.parse.parse_qs(request.query_string)
     user_id = int.from_bytes(query[b"user"][0])
-    item_id = int.from_bytes(query[b"product"][0])
+    item_id = int.from_bytes(query[b"item"][0])
 
     user = session.query(User).filter(User.id == user_id).with_for_update().one()
     item = session.query(Item).filter(Item.id == item_id).with_for_update().one()
 
     balance_new = user.balance - item.price
-    if balance_new < 0:
+    if item.price > 0 and balance_new < 0:
         flask.abort(Response(f"Too poor!", HTTPStatus.PAYMENT_REQUIRED))
 
     now = datetime.datetime.now()
