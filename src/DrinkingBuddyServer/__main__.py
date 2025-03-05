@@ -150,6 +150,55 @@ def search():
 
     flask.abort(HTTPStatus.NOT_FOUND, f"q={query_str}|{query_bytes.hex()}")
 
+@app.route("/buy2", methods=["POST"])
+def buy2():
+    terminal = basic_auth()
+
+    # trigger an HTTP 400 error if a parameter is missing
+    request.args["user"]
+    request.args["product"]
+
+    # query can't be constructed from request.args for non-UTF-8 byte sequences
+    query = urllib.parse.parse_qs(request.query_string)
+    user_id = int.from_bytes(query[b"user"][0])
+    item_id = int.from_bytes(query[b"product"][0])
+
+    user = session.query(User).filter(User.id == user_id).with_for_update().one()
+    item = session.query(Item).filter(Item.id == item_id).with_for_update().one()
+
+    balance_new = user.balance - item.price
+    if balance_new < 0:
+        flask.abort(Response(f"Too poor!", HTTPStatus.PAYMENT_REQUIRED))
+
+    now = datetime.datetime.now()
+    user.balance = balance_new
+    item.quantity -= 1
+
+    transaction = Transaction(
+        user=user,
+        date=now,
+        value=1,
+    )
+    session.add(transaction)
+
+    transaction_item = TransactionItem(
+        transaction=transaction,
+        date=now,
+        quantity=1,
+        price_per_item=item.price,
+        canceled_date=None,
+        element_id=item.id,
+    )
+    session.add(transaction_item)
+
+    session.commit()
+
+    return dict(
+        id=urllib.parse.quote_from_bytes(int_to_bytes(user.id)),
+        name=user.name,
+        balance=user.balance,
+    )
+
 
 @app.route("/sync", methods=['POST'])
 def sync():
@@ -535,7 +584,7 @@ def buy():
         response = {'Melody': "b2c3b2", 'Message': [
             'ERROR', 'Not in stock'], 'Time': now.__str__()}
     # we do the + price again because we need to compare before deducting the price
-    elif(currentUser.balance + currentItem.price < currentItem.price):
+    elif(currentUser.balance < 0):
         session.rollback()
         print('not enough money in the account!')
         response = {'Melody': "b2c3b2", 'Message': [
