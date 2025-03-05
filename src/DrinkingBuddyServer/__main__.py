@@ -119,6 +119,8 @@ def ceil_div(n: int, d: int) -> int:
 def int_to_bytes(i: int) -> bytes:
     bytes_count = ceil_div(i.bit_length(), 8)
     return i.to_bytes(bytes_count)
+def int_to_opaque_str(i: int) -> str:
+    return urllib.parse.quote_from_bytes(int_to_bytes(i))
 
 @app.route("/search", methods=["GET"])
 def search():
@@ -129,19 +131,19 @@ def search():
     item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == query_str).one_or_none()
     if item is not None:
         return dict(
-            id=urllib.parse.quote_from_bytes(int_to_bytes(item.id)),
+            id=int_to_opaque_str(item.id),
             name=item.name,
             value=item.price,
         )
 
-    # query_bytes can't be constructed from query_str for non-UTF-8 inputs
+    # query can't be constructed from request.args for non-UTF-8 byte sequences
     query_bytes = urllib.parse.parse_qs(request.query_string)[b"q"][0]
     query_int = int.from_bytes(query_bytes)
 
     user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == query_int).one_or_none()
     if user is not None:
         return dict(
-            id=urllib.parse.quote_from_bytes(int_to_bytes(user.id)),
+            id=int_to_opaque_str(user.id),
             name=user.name,
             balance=user.balance,
         )
