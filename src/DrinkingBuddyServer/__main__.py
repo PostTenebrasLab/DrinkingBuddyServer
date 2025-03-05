@@ -114,15 +114,11 @@ def basic_auth():
 
     return terminal
 
-def base64url_decode(b64: str) -> bytes:
-    b64 += '=' * (4 - len(b64) % 4)
-    return base64.urlsafe_b64decode(b64)
 def ceil_div(n: int, d: int) -> int:
     return -(n // -d)
-def int_to_base64url(i: int) -> str:
+def int_to_bytes(i: int) -> bytes:
     bytes_count = ceil_div(i.bit_length(), 8)
-    bites = i.to_bytes(bytes_count)
-    return base64.urlsafe_b64encode(bites).rstrip(b'=').decode('ascii')
+    return i.to_bytes(bytes_count)
 
 @app.route("/search", methods=["GET"])
 def search():
@@ -133,18 +129,19 @@ def search():
     item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == query_str).one_or_none()
     if item is not None:
         return dict(
-            id=int_to_base64url(item.id),
+            id=urllib.parse.quote_from_bytes(int_to_bytes(item.id)),
             name=item.name,
             value=item.price,
         )
 
+    # query_bytes can't be constructed from query_str for non-UTF-8 inputs
     query_bytes = urllib.parse.parse_qs(request.query_string)[b"q"][0]
     query_int = int.from_bytes(query_bytes)
 
     user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == query_int).one_or_none()
     if user is not None:
         return dict(
-            id=int_to_base64url(user.id),
+            id=urllib.parse.quote_from_bytes(int_to_bytes(user.id)),
             name=user.name,
             balance=user.balance,
         )
