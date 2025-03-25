@@ -131,6 +131,7 @@ def search():
     item = session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == query_str).one_or_none()
     if item is not None:
         return dict(
+            type='Item',
             id=int_to_opaque_str(item.id),
             name=item.name,
             value=item.price,
@@ -143,6 +144,7 @@ def search():
     user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == query_int).one_or_none()
     if user is not None:
         return dict(
+            type='User',
             id=int_to_opaque_str(user.id),
             name=user.name,
             balance=user.balance,
