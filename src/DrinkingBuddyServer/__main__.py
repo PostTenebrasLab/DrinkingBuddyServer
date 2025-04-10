@@ -70,7 +70,7 @@ session = DBSession()
 
 
 app = Flask(__name__)
-app.config['JSON_SORT_KEYS'] = False
+app.json.sort_keys = False
 app.config['LDAP_BASE_DN'] = 'OU=users,dc=example,dc=org'
 app.config['LDAP_USERNAME'] = 'CN=user,OU=Users,DC=example,DC=org'
 app.config['LDAP_PASSWORD'] = 'password'
