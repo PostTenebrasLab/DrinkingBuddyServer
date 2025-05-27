@@ -141,7 +141,11 @@ def search():
     query_bytes = urllib.parse.parse_qs(request.query_string)[b"q"][0]
     query_int = int.from_bytes(query_bytes)
 
-    user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == query_int).one_or_none()
+    try:
+        user = session.query(User, User.id, User.name, User.balance).join(Card, User.id == Card.user_id).filter(Card.id == query_int).one_or_none()
+    except OverflowError:
+        user = None
+
     if user is not None:
         return OrderedDict(
             type='User',
