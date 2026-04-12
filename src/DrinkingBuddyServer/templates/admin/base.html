@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}{% endblock %} — DrinkingBuddy Admin</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <script src="https://unpkg.com/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <style>
+    .sort-btn { cursor: pointer; user-select: none; white-space: nowrap; }
+    .sort-btn .sort-arrow { opacity: .4; font-size: .8em; }
+    .sort-btn.active .sort-arrow { opacity: 1; }
+  </style>
+  <script>
+    function setSort(el) {
+      const sf = document.getElementById('sort-field');
+      const sd = document.getElementById('sort-dir');
+      const field = el.dataset.sort;
+      sd.value = (sf.value === field && sd.value === 'asc') ? 'desc' : 'asc';
+      sf.value = field;
+      document.querySelectorAll('.sort-btn').forEach(b => {
+        const active = b.dataset.sort === field;
+        b.classList.toggle('active', active);
+        b.querySelector('.sort-arrow').textContent = active ? (sd.value === 'asc' ? '↑' : '↓') : '↕';
+      });
+      htmx.trigger('#filter-form', 'sort-changed');
+    }
+  </script>
+  <style>
+    header { background: var(--pico-card-background-color); border-bottom: 1px solid var(--pico-muted-border-color); }
+    .alert-error { background: var(--pico-del-color); color: #fff; padding: .75rem 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem; }
+    table td, table th { white-space: nowrap; }
+    table input, table select { margin: 0; padding: .25rem .5rem; min-width: 0; }
+    figure { overflow-x: auto; }
+    dialog article { width: min(480px, 94vw); margin: auto; }
+    dialog article header { display: flex; justify-content: space-between; align-items: center; padding-bottom: .5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--pico-muted-border-color); }
+    dialog article footer { display: flex; justify-content: flex-end; gap: .5rem; padding-top: .5rem; margin-top: 1rem; border-top: 1px solid var(--pico-muted-border-color); }
+    .btn-sm { padding: .25rem .75rem; font-size: .875rem; }
+    .col-action { width: 1%; white-space: nowrap; }
+    .text-muted { color: var(--pico-muted-color); }
+    @media (max-width: 640px) {
+      .hide-mobile { display: none; }
+      nav ul { flex-wrap: wrap; row-gap: .25rem; }
+      main.container { padding-inline: .75rem; }
+      .col-name { max-width: 10rem; overflow: hidden; text-overflow: ellipsis; }
+      table td, table th { padding-inline: .35rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="container-fluid">
+    <nav class="container">
+      {% if session.admin_user %}
+      <ul>
+        <li><a href="{{ url_for('admin.dashboard') }}">Dashboard</a></li>
+        <li><a href="{{ url_for('admin.items') }}">Items</a></li>
+        <li><a href="{{ url_for('admin.users') }}">Users</a></li>
+        <li><a href="{{ url_for('admin.transactions') }}">Transactions</a></li>
+        <li><a href="{{ url_for('admin.stats') }}">Stats</a></li>
+        <li><a href="{{ url_for('admin.categories') }}">Categories</a></li>
+        <li><a href="{{ url_for('admin.logout') }}">Logout ({{ session.admin_user }})</a></li>
+      </ul>
+      {% endif %}
+    </nav>
+  </header>
+
+  <main class="container" style="margin-top: 2rem">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for category, message in messages %}
+    <div class="{{ 'alert-error' if category == 'error' else '' }}" role="alert">{{ message }}</div>
+    {% endfor %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

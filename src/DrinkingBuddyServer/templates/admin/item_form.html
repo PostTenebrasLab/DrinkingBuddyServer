@@ -1,0 +1,47 @@
+<form hx-post="{{ url_for('admin.item_update', item_id=item.id) }}"
+      hx-target="#item-{{ item.id }}"
+      hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) this.closest('dialog').close()">
+  <label>
+    Name
+    <input name="name" value="{{ item.name }}" required autofocus>
+  </label>
+  <label>
+    Category
+    <select name="category_id" required>
+      {% for cat in categories %}
+      <option value="{{ cat.id }}" {% if cat.id == item.category_id %}selected{% endif %}>{{ cat.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <div class="grid">
+    <label>
+      Quantity
+      <input type="number" name="quantity" value="{{ item.quantity }}" required>
+    </label>
+    <label>
+      Min Quantity <small class="text-muted">(-1 to ignore)</small>
+      <input type="number" name="minquantity" value="{{ item.minquantity if item.minquantity is not none else -1 }}" required>
+    </label>
+  </div>
+  <label>
+    Price
+    <input type="number" step="0.05" name="price" value="{{ '%.2f'|format(item.price / 100) }}" required>
+  </label>
+  <label>
+    Barcode
+    <input name="barcode" value="{{ item.barcode or '' }}" placeholder="optional">
+  </label>
+  <footer>
+    <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cancel</button>
+    <button type="button" class="contrast"
+            hx-post="{{ url_for('admin.item_delete', item_id=item.id) }}"
+            hx-target="#item-{{ item.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Delete {{ item.name }}?"
+            hx-on::after-request="if(event.detail.successful) this.closest('dialog').close()">
+      Delete
+    </button>
+    <button type="submit">Save</button>
+  </footer>
+</form>

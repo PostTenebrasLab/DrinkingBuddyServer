@@ -1,0 +1,60 @@
+{% extends 'admin/base.html' %}
+{% block title %}Transactions{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+  <h2 style="margin:0">Transactions</h2>
+</div>
+
+<form id="filter-form"
+      hx-get="{{ url_for('admin.transactions_rows') }}"
+      hx-target="#txn-tbody"
+      hx-trigger="input changed delay:200ms from:#q-input, sort-changed from:#filter-form">
+  <input type="search" id="q-input" name="q" placeholder="Filter by user…" autocomplete="off" style="margin-bottom:1rem">
+  <input type="hidden" name="sort" id="sort-field" value="date">
+  <input type="hidden" name="dir"  id="sort-dir"   value="desc">
+</form>
+
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th class="hide-mobile">#</th>
+        <th><span class="sort-btn active" data-sort="date"  onclick="setSort(this)">Date  <span class="sort-arrow">↓</span></span></th>
+        <th><span class="sort-btn"        data-sort="user"  onclick="setSort(this)">User  <span class="sort-arrow">↕</span></span></th>
+        <th><span class="sort-btn"        data-sort="value" onclick="setSort(this)">Value <span class="sort-arrow">↕</span></span></th>
+      </tr>
+    </thead>
+    <tbody id="txn-tbody">
+      {% for txn in transactions %}
+      <tr>
+        <td class="hide-mobile text-muted">{{ txn.id }}</td>
+        <td>{{ txn.date.strftime('%Y-%m-%d %H:%M') if txn.date else '—' }}</td>
+        <td>{{ txn.user.name if txn.user else '—' }}</td>
+        <td>{{ txn.value }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="text-align:center" class="text-muted">No transactions found.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</figure>
+
+<div id="txn-pagination" style="display:flex; gap:.5rem; justify-content:center; align-items:center; margin-top:1rem">
+  {% if page > 1 %}
+  <button class="secondary"
+          hx-get="{{ url_for('admin.transactions_rows') }}"
+          hx-target="#txn-tbody"
+          hx-include="#filter-form"
+          hx-vals='{"page": {{ page - 1 }}}'>Previous</button>
+  {% endif %}
+  <small class="text-muted">{{ (page - 1) * per_page + 1 }}–{{ [page * per_page, total] | min }} of {{ total }}</small>
+  {% if page * per_page < total %}
+  <button class="secondary"
+          hx-get="{{ url_for('admin.transactions_rows') }}"
+          hx-target="#txn-tbody"
+          hx-include="#filter-form"
+          hx-vals='{"page": {{ page + 1 }}}'>Next</button>
+  {% endif %}
+</div>
+{% endblock %}

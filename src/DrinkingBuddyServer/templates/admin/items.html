@@ -1,0 +1,118 @@
+{% extends 'admin/base.html' %}
+{% block title %}Items{% endblock %}
+
+{% block content %}
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
+  <h2 style="margin:0">Items</h2>
+  <button onclick="document.getElementById('add-item-dialog').showModal()">Add Item</button>
+</div>
+
+<form id="filter-form"
+      hx-get="{{ url_for('admin.items_rows') }}"
+      hx-target="#items-tbody"
+      hx-trigger="input changed delay:200ms from:#q-input, change from:.cat-checkbox, sort-changed from:#filter-form, cat-changed from:#filter-form">
+  <input type="search" id="q-input" name="q" placeholder="Filter by name or barcode…" autocomplete="off" style="margin-bottom:.5rem">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem">
+    <small style="color:var(--pico-muted-color)">Categories</small>
+    <div style="display:flex; gap:.5rem">
+      <button type="button" class="btn-sm secondary" onclick="toggleCats(this.closest('form'),true)">All</button>
+      <button type="button" class="btn-sm secondary" onclick="toggleCats(this.closest('form'),false)">None</button>
+    </div>
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:.25rem .75rem; padding:.5rem; margin-bottom:1rem; border:1px solid var(--pico-muted-border-color); border-radius:var(--pico-border-radius)">
+    {% for cat in categories %}
+    <label style="display:flex; align-items:center; gap:.25rem; margin:0; font-weight:normal; white-space:nowrap">
+      <input type="checkbox" name="category_id" value="{{ cat.id }}" checked class="cat-checkbox" style="margin:0">
+      {{ cat.name }}
+    </label>
+    {% endfor %}
+  </div>
+  <input type="hidden" name="has_cat_filter" value="1">
+  <input type="hidden" name="sort" id="sort-field" value="name">
+  <input type="hidden" name="dir"  id="sort-dir"   value="asc">
+</form>
+<script>
+  function toggleCats(form, checked) {
+    form.querySelectorAll('.cat-checkbox').forEach(cb => cb.checked = checked);
+    htmx.trigger(form, 'cat-changed');
+  }
+</script>
+
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th class="col-action"></th>
+        <th class="col-name"><span class="sort-btn" data-sort="name" onclick="setSort(this)">Name<span class="sort-arrow">↑</span></span></th>
+        <th class="col-action"><span class="sort-btn" data-sort="price"       onclick="setSort(this)">Price<span class="sort-arrow">↕</span></span></th>
+        <th class="col-action"><span class="sort-btn" data-sort="quantity"    onclick="setSort(this)">Qty<span class="sort-arrow">↕</span></span></th>
+        <th class="hide-mobile"><span class="sort-btn" data-sort="minquantity" onclick="setSort(this)">Min<span class="sort-arrow">↕</span></span></th>
+        <th class="hide-mobile">Barcode</th>
+        <th><span class="sort-btn" data-sort="category"    onclick="setSort(this)">Category    <span class="sort-arrow">↕</span></span></th>
+      </tr>
+    </thead>
+    <tbody id="items-tbody">
+      {% for item in items %}
+      {% include 'admin/item_row.html' %}
+      {% endfor %}
+    </tbody>
+  </table>
+</figure>
+
+<!-- Edit dialog — content loaded via HTMX -->
+<dialog id="edit-item-dialog">
+  <article>
+    <header>
+      <h3>Edit Item</h3>
+      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()"></button>
+    </header>
+    <div id="edit-item-content"></div>
+  </article>
+</dialog>
+
+<!-- Add dialog — static form -->
+<dialog id="add-item-dialog">
+  <article>
+    <header>
+      <h3>Add Item</h3>
+      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()"></button>
+    </header>
+    <form method="post" action="{{ url_for('admin.item_create') }}">
+      <label>
+        Name
+        <input name="name" required>
+      </label>
+      <label>
+        Category
+        <select name="category_id" required>
+          {% for cat in categories %}
+          <option value="{{ cat.id }}">{{ cat.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="grid">
+        <label>
+          Quantity
+          <input type="number" name="quantity" value="0" min="0" required>
+        </label>
+        <label>
+          Min Quantity <small class="text-muted">(-1 to ignore)</small>
+          <input type="number" name="minquantity" value="-1" min="-1" required>
+        </label>
+      </div>
+      <label>
+        Price
+        <input type="number" step="0.05" name="price" value="0.00" required>
+      </label>
+      <label>
+        Barcode
+        <input name="barcode" placeholder="optional">
+      </label>
+      <footer>
+        <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cancel</button>
+        <button type="submit">Add</button>
+      </footer>
+    </form>
+  </article>
+</dialog>
+{% endblock %}

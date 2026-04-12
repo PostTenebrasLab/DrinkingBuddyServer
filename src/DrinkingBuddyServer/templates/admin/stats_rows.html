@@ -1,0 +1,12 @@
+{% for item, total_qty, total_revenue in rows %}
+<tr>
+  <td class="col-name">{{ item.name }}</td>
+  <td class="col-action">{{ total_qty }}</td>
+  <td class="col-action">{{ '%.2f'|format(total_revenue / 100) }}</td>
+  <td class="hide-mobile">{{ item.category.name if item.category else '—' }}</td>
+</tr>
+{% else %}
+<tr><td colspan="4" class="text-muted">No data</td></tr>
+{% endfor %}
+
+<div id="chart-data" hx-swap-oob="true" style="display:none">{{ chart|tojson }}</div>

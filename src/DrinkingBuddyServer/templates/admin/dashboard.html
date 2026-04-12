@@ -1,0 +1,51 @@
+{% extends 'admin/base.html' %}
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<h2>Dashboard</h2>
+
+<div class="grid" style="grid-template-columns: repeat(2, 1fr)">
+  <article style="text-align:center">
+    <h2>{{ item_count }}</h2>
+    <p class="text-muted">Items</p>
+  </article>
+  <article style="text-align:center">
+    <h2>{{ user_count }}</h2>
+    <p class="text-muted">Users</p>
+  </article>
+  <article style="text-align:center">
+    <h2>{{ transaction_count }}</h2>
+    <p class="text-muted">Transactions</p>
+  </article>
+  <article style="text-align:center">
+    <h2>{{ '%.2f'|format(total_balance / 100) }} CHF</h2>
+    <p class="text-muted">Total Member Balance</p>
+  </article>
+</div>
+
+{% if low_stock %}
+<h3>Low Stock</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Item</th>
+      <th>Category</th>
+      <th>Qty</th>
+      <th>Min</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in low_stock %}
+    <tr>
+      <td>{{ item.name }}</td>
+      <td>{{ item.category.name if item.category else '—' }}</td>
+      <td style="color: var(--pico-del-color); font-weight: bold">{{ item.quantity }}</td>
+      <td>{{ item.minquantity }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="text-muted">All items are adequately stocked.</p>
+{% endif %}
+{% endblock %}

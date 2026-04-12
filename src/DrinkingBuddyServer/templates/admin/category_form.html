@@ -1,0 +1,21 @@
+<form hx-post="{{ url_for('admin.category_update', category_id=category.id) }}"
+      hx-target="#category-{{ category.id }}"
+      hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) this.closest('dialog').close()">
+  <label>
+    Name
+    <input name="name" value="{{ category.name }}" required autofocus>
+  </label>
+  <footer>
+    <button type="button" class="contrast"
+            hx-post="{{ url_for('admin.category_delete', category_id=category.id) }}"
+            hx-target="#category-{{ category.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Delete {{ category.name }}?"
+            hx-on::after-request="if(event.detail.successful) this.closest('dialog').close()">
+      Delete
+    </button>
+    <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cancel</button>
+    <button type="submit">Save</button>
+  </footer>
+</form>

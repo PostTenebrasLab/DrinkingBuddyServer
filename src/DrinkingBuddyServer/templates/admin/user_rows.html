@@ -1,0 +1,5 @@
+{% for user in users %}
+{% include 'admin/user_row.html' %}
+{% else %}
+<tr><td colspan="5" style="text-align:center" class="text-muted">No users found.</td></tr>
+{% endfor %}

@@ -1,0 +1,5 @@
+{% for item in items %}
+{% include 'admin/item_row.html' %}
+{% else %}
+<tr><td colspan="7" style="text-align:center" class="text-muted">No items found.</td></tr>
+{% endfor %}

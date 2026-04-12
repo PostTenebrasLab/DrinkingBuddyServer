@@ -1,0 +1,13 @@
+<tr id="user-{{ user.id }}">
+  <td class="col-action">
+    <button class="btn-sm"
+            hx-get="{{ url_for('admin.user_edit', user_id=user.id) }}"
+            hx-target="#edit-user-content"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('edit-user-dialog').showModal()">
+      Edit
+    </button>
+  </td>
+  <td>{{ user.name }}</td>
+  <td>{{ '%.2f'|format(user.balance / 100) }} CHF</td>
+</tr>

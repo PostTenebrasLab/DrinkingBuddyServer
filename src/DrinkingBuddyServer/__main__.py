@@ -36,19 +36,7 @@ from random import randint
 #from flask_simpleldap import LDAP
 from pprint import pprint
 
-try:
-    # check for local configuration
-    # defines variables to not push on github
-    import localconfig
-    dbpath = localconfig.dbpath
-    dbuser = localconfig.dbuser
-    dbpasswd = localconfig.dbpasswd
-except:
-    # use default development test values
-    # dev path to DB in same dir as script
-    dbpath = 'sqlite:////data/drinkingBuddy.db'
-    dbuser = "ptllocker1"
-    dbpasswd = "P0stL0ck"
+dbpath = os.environ.get('DB_PATH', 'sqlite:////data/drinkingBuddy.db')
 
 
 __author__ = 'Sebastien Chassot'
@@ -74,6 +62,11 @@ app.json.sort_keys = False
 app.config['LDAP_BASE_DN'] = 'OU=users,dc=example,dc=org'
 app.config['LDAP_USERNAME'] = 'CN=user,OU=Users,DC=example,DC=org'
 app.config['LDAP_PASSWORD'] = 'password'
+
+app.secret_key = os.environ.get('SECRET_KEY', 'change-me-in-production')
+
+from .admin import admin_bp
+app.register_blueprint(admin_bp)
 broker = "mqtt.lan.posttenebraslab.ch"
 
 # create client object client1.on_publish = on_publish #assign function to callback client1.connect(broker,port) #establish connection$

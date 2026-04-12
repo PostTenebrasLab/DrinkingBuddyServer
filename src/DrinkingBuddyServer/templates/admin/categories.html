@@ -1,0 +1,46 @@
+{% extends 'admin/base.html' %}
+{% block title %}Categories{% endblock %}
+
+{% block content %}
+<h2>Categories</h2>
+
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th class="col-action"></th>
+        <th>Name</th>
+      </tr>
+    </thead>
+    <tbody id="categories-tbody">
+      {% for category in categories %}
+      {% include 'admin/category_row.html' %}
+      {% endfor %}
+    </tbody>
+  </table>
+</figure>
+
+<article>
+  <h4>Add Category</h4>
+  <form hx-post="{{ url_for('admin.category_create') }}"
+        hx-target="#categories-tbody"
+        hx-swap="beforeend"
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+    <label>Name</label>
+    <div style="display:flex; gap:.5rem">
+      <input name="name" required placeholder="Category name" style="margin:0">
+      <button type="submit" style="width:auto">Add</button>
+    </div>
+  </form>
+</article>
+
+<dialog id="edit-category-dialog">
+  <article>
+    <header>
+      <h3>Edit Category</h3>
+      <button aria-label="Close" rel="prev" onclick="this.closest('dialog').close()"></button>
+    </header>
+    <div id="edit-category-content"></div>
+  </article>
+</dialog>
+{% endblock %}

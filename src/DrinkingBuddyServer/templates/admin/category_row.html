@@ -1,0 +1,12 @@
+<tr id="category-{{ category.id }}">
+  <td class="col-action">
+    <button class="btn-sm"
+            hx-get="{{ url_for('admin.category_edit', category_id=category.id) }}"
+            hx-target="#edit-category-content"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('edit-category-dialog').showModal()">
+      Edit
+    </button>
+  </td>
+  <td>{{ category.name }}</td>
+</tr>

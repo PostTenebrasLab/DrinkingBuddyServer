@@ -1,0 +1,134 @@
+{% extends 'admin/base.html' %}
+{% block title %}Stats{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+
+<h2 style="margin-bottom:1rem">Item Stats</h2>
+
+<form id="filter-form"
+      hx-get="{{ url_for('admin.stats_rows') }}"
+      hx-target="#stats-tbody"
+      hx-trigger="change from:.stats-filter, change from:.cat-checkbox, input changed delay:200ms from:#q-input, sort-changed from:#filter-form, cat-changed from:#filter-form">
+
+  <!-- Date range -->
+  <div style="display:flex; flex-wrap:wrap; gap:.5rem; align-items:center; margin-bottom:.75rem">
+    <button type="button" class="btn-sm secondary" onclick="setPreset(7)">7d</button>
+    <button type="button" class="btn-sm secondary" onclick="setPreset(30)">30d</button>
+    <button type="button" class="btn-sm secondary" onclick="setPreset(90)">3m</button>
+    <button type="button" class="btn-sm secondary" onclick="setPreset(365)">1y</button>
+    <button type="button" class="btn-sm secondary" onclick="setPreset(0)">All</button>
+    <input type="date" id="date-from" name="date_from" class="stats-filter" style="margin:0;width:auto">
+    <span style="color:var(--pico-muted-color)">→</span>
+    <input type="date" id="date-to"   name="date_to"   class="stats-filter" style="margin:0;width:auto">
+  </div>
+
+  <!-- Search -->
+  <input type="search" id="q-input" name="q" placeholder="Filter by name…" autocomplete="off" style="margin-bottom:.5rem">
+
+  <!-- Categories -->
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:.25rem">
+    <small style="color:var(--pico-muted-color)">Categories</small>
+    <div style="display:flex; gap:.5rem">
+      <button type="button" class="btn-sm secondary" onclick="toggleCats(this.closest('form'),true)">All</button>
+      <button type="button" class="btn-sm secondary" onclick="toggleCats(this.closest('form'),false)">None</button>
+    </div>
+  </div>
+  <div style="display:flex; flex-wrap:wrap; gap:.25rem .75rem; padding:.5rem; margin-bottom:1rem; border:1px solid var(--pico-muted-border-color); border-radius:var(--pico-border-radius)">
+    {% for cat in categories %}
+    <label style="display:flex; align-items:center; gap:.25rem; margin:0; font-weight:normal; white-space:nowrap">
+      <input type="checkbox" name="category_id" value="{{ cat.id }}" checked class="cat-checkbox" style="margin:0">
+      {{ cat.name }}
+    </label>
+    {% endfor %}
+  </div>
+
+  <input type="hidden" name="has_cat_filter" value="1">
+  <input type="hidden" name="sort" id="sort-field" value="qty">
+  <input type="hidden" name="dir"  id="sort-dir"   value="desc">
+</form>
+
+<!-- Chart -->
+<div style="margin-bottom:1.5rem; height:300px">
+  <canvas id="consumption-chart"></canvas>
+</div>
+<div id="chart-data" style="display:none">{{ chart|tojson }}</div>
+
+<!-- Table -->
+<figure>
+  <table>
+    <thead>
+      <tr>
+        <th class="col-name"><span class="sort-btn" data-sort="name" onclick="setSort(this)">Name <span class="sort-arrow">↕</span></span></th>
+        <th class="col-action"><span class="sort-btn active" data-sort="qty" onclick="setSort(this)">Qty <span class="sort-arrow">↓</span></span></th>
+        <th class="col-action"><span class="sort-btn" data-sort="revenue" onclick="setSort(this)">Revenue (CHF) <span class="sort-arrow">↕</span></span></th>
+        <th class="hide-mobile"><span class="sort-btn" data-sort="category" onclick="setSort(this)">Category <span class="sort-arrow">↕</span></span></th>
+      </tr>
+    </thead>
+    <tbody id="stats-tbody">
+      {% include 'admin/stats_rows.html' %}
+    </tbody>
+  </table>
+</figure>
+
+<script>
+  // Category toggle
+  function toggleCats(form, checked) {
+    form.querySelectorAll('.cat-checkbox').forEach(cb => cb.checked = checked);
+    htmx.trigger(form, 'cat-changed');
+  }
+
+  // Preset buttons
+  function setPreset(days) {
+    const from = document.getElementById('date-from');
+    const to   = document.getElementById('date-to');
+    if (days === 0) {
+      from.value = '';
+      to.value   = '';
+    } else {
+      const now   = new Date();
+      const start = new Date(now);
+      start.setDate(now.getDate() - days);
+      from.value = start.toISOString().slice(0, 10);
+      to.value   = now.toISOString().slice(0, 10);
+    }
+    htmx.trigger('#filter-form', 'sort-changed');
+  }
+
+  // Chart.js setup
+  const chartEl  = document.getElementById('consumption-chart');
+  const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+  const consumptionChart = new Chart(chartEl, {
+    type: 'bar',
+    data: {
+      labels:   chartData.labels,
+      datasets: [{
+        label:           'Units sold',
+        data:            chartData.values,
+        backgroundColor: 'rgba(99, 179, 237, 0.5)',
+        borderColor:     'rgba(99, 179, 237, 1)',
+        borderWidth:     1,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { maxTicksLimit: 12, color: '#aaa' }, grid: { color: '#333' } },
+        y: { beginAtZero: true, ticks: { color: '#aaa' }, grid: { color: '#333' } }
+      }
+    }
+  });
+
+  // Update chart when HTMX refreshes the rows
+  document.body.addEventListener('htmx:afterSettle', function(evt) {
+    if (!evt.detail.target || evt.detail.target.id !== 'stats-tbody') return;
+    const el  = document.getElementById('chart-data');
+    const raw = JSON.parse(el.textContent);
+    consumptionChart.data.labels              = raw.labels;
+    consumptionChart.data.datasets[0].data   = raw.values;
+    consumptionChart.update();
+  });
+</script>
+{% endblock %}

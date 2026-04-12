@@ -1,0 +1,24 @@
+{% extends 'admin/base.html' %}
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div style="max-width: 380px; margin: 4rem auto;">
+  <article>
+    <hgroup>
+      <h2>Admin Login</h2>
+      <p>LDAP credentials required. Must be in the <code>admin</code> group.</p>
+    </hgroup>
+    <form method="post">
+      <label>
+        Username
+        <input type="text" name="username" autocomplete="username" required autofocus>
+      </label>
+      <label>
+        Password
+        <input type="password" name="password" autocomplete="current-password" required>
+      </label>
+      <button type="submit" style="width:100%">Login</button>
+    </form>
+  </article>
+</div>
+{% endblock %}

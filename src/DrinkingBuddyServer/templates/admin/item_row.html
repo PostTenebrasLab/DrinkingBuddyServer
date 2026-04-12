@@ -1,0 +1,19 @@
+<tr id="item-{{ item.id }}">
+  <td class="col-action">
+    <button class="btn-sm"
+            hx-get="{{ url_for('admin.item_edit', item_id=item.id) }}"
+            hx-target="#edit-item-content"
+            hx-swap="innerHTML"
+            onclick="document.getElementById('edit-item-dialog').showModal()">
+      Edit
+    </button>
+  </td>
+  <td class="col-name">{{ item.name }}</td>
+  <td>{{ '%.2f'|format(item.price / 100) }}</td>
+  <td {% if item.minquantity is not none and item.minquantity >= 0 and item.quantity <= item.minquantity %}style="color:var(--pico-del-color);font-weight:bold"{% endif %}>
+    {{ item.quantity }}
+  </td>
+  <td class="hide-mobile">{{ item.minquantity if item.minquantity is not none else '—' }}</td>
+  <td class="hide-mobile text-muted">{{ item.barcode or '—' }}</td>
+  <td>{{ item.category.name if item.category else '—' }}</td>
+</tr>

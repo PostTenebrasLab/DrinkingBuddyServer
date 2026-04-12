@@ -1,0 +1,29 @@
+<form hx-post="{{ url_for('admin.user_update', user_id=user.id) }}"
+      hx-target="#user-{{ user.id }}"
+      hx-swap="outerHTML"
+      hx-on::after-request="if(event.detail.successful) this.closest('dialog').close()">
+  <label>
+    Name
+    <input name="name" value="{{ user.name }}" required autofocus>
+  </label>
+  <label>
+    Balance (CHF)
+    <input type="number" step="0.01" name="balance" value="{{ '%.2f'|format(user.balance / 100) }}" required>
+  </label>
+  <label>
+    LDAP Username
+    <input name="ldap_user" value="{{ user.ldap_user or '' }}" placeholder="optional">
+  </label>
+  <label>
+    Type
+    <select name="type">
+      <option value="1" {% if user.type == 1 %}selected{% endif %}>Member</option>
+      <option value="2" {% if user.type == 2 %}selected{% endif %}>Admin</option>
+      <option value="0" {% if user.type == 0 %}selected{% endif %}>Inactive</option>
+    </select>
+  </label>
+  <footer>
+    <button type="button" class="secondary" onclick="this.closest('dialog').close()">Cancel</button>
+    <button type="submit">Save</button>
+  </footer>
+</form>
