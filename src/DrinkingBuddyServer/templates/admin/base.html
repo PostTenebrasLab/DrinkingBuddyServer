@@ -26,6 +26,61 @@
       htmx.trigger('#filter-form', 'sort-changed');
     }
   </script>
+  <script>
+    // Barcode scanner using BarcodeDetector API (Chrome on Android)
+    let _scanStream = null;
+
+    function _showScanBtns() {
+      if ('BarcodeDetector' in window) {
+        document.querySelectorAll('.scan-btn').forEach(btn => btn.style.removeProperty('display'));
+      }
+    }
+    document.addEventListener('DOMContentLoaded', _showScanBtns);
+    document.addEventListener('htmx:afterSettle', _showScanBtns);
+
+    async function startBarcodeScanner(btn) {
+      const row   = btn.parentElement;
+      const input = row.querySelector('.barcode-input');
+      const video = row.nextElementSibling;
+
+      if (_scanStream) { _stopBarcodeScanner(btn, video); return; }
+
+      btn.textContent = '⏹ Stop';
+      try {
+        _scanStream = await navigator.mediaDevices.getUserMedia(
+          { video: { facingMode: { ideal: 'environment' } } }
+        );
+        video.srcObject = _scanStream;
+        video.style.display = 'block';
+
+        const detector = new BarcodeDetector();
+        const scan = async () => {
+          if (!_scanStream) return;
+          try {
+            const codes = await detector.detect(video);
+            if (codes.length > 0) { input.value = codes[0].rawValue; _stopBarcodeScanner(btn, video); return; }
+          } catch (_) {}
+          requestAnimationFrame(scan);
+        };
+        video.addEventListener('playing', () => requestAnimationFrame(scan), { once: true });
+
+        // Stop scanner if dialog is closed
+        const dialog = btn.closest('dialog');
+        if (dialog) dialog.addEventListener('close', () => _stopBarcodeScanner(btn, video), { once: true });
+      } catch (e) {
+        console.error('Camera error:', e);
+        btn.textContent = '📷 Scan';
+        _scanStream = null;
+      }
+    }
+
+    function _stopBarcodeScanner(btn, video) {
+      if (_scanStream) { _scanStream.getTracks().forEach(t => t.stop()); _scanStream = null; }
+      video.style.display = 'none';
+      video.srcObject = null;
+      btn.textContent = '📷 Scan';
+    }
+  </script>
   <style>
     header { background: var(--pico-card-background-color); border-bottom: 1px solid var(--pico-muted-border-color); }
     .alert-error { background: var(--pico-del-color); color: #fff; padding: .75rem 1rem; border-radius: var(--pico-border-radius); margin-bottom: 1rem; }
