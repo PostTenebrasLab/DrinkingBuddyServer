@@ -27,6 +27,43 @@
     }
   </script>
   <script>
+    // NFC badge scanner using Web NFC API (Chrome on Android)
+    let _nfcAbort = null;
+
+    function _showNFCBtns() {
+      if ('NDEFReader' in window) {
+        document.querySelectorAll('.nfc-scan-btn').forEach(btn => btn.style.removeProperty('display'));
+      }
+    }
+    document.addEventListener('DOMContentLoaded', _showNFCBtns);
+    document.addEventListener('htmx:afterSettle', _showNFCBtns);
+
+    async function startNFCScan(btn) {
+      const input = btn.parentElement.querySelector('.nfc-input');
+      if (_nfcAbort) { _stopNFCScan(btn); return; }
+
+      btn.textContent = '⏹ Stop';
+      _nfcAbort = new AbortController();
+      try {
+        const reader = new NDEFReader();
+        await reader.scan({ signal: _nfcAbort.signal });
+        reader.addEventListener('reading', ({ serialNumber }) => {
+          input.value = parseInt(serialNumber.split(':').slice(0, 4).join(''), 16);
+          _stopNFCScan(btn);
+        }, { once: true });
+        const dialog = btn.closest('dialog');
+        if (dialog) dialog.addEventListener('close', () => _stopNFCScan(btn), { once: true });
+      } catch (e) {
+        console.error('NFC error:', e);
+        _stopNFCScan(btn);
+      }
+    }
+
+    function _stopNFCScan(btn) {
+      if (_nfcAbort) { _nfcAbort.abort(); _nfcAbort = null; }
+      btn.textContent = '📡 NFC';
+    }
+
     // Barcode scanner using BarcodeDetector API (Chrome on Android)
     let _scanStream = null;
 

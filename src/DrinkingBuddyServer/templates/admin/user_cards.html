@@ -14,8 +14,9 @@
         hx-target="#user-{{ user.id }}-cards"
         hx-swap="outerHTML"
         hx-on::after-request="if(event.detail.successful) this.reset()"
-        style="display:flex; gap:.5rem; margin-top:.5rem; margin-bottom:0">
-    <input type="text" name="card_id" placeholder="Badge ID" style="margin:0" required>
-    <button type="submit" style="width:auto">Add</button>
+        style="display:flex; gap:.5rem; align-items:stretch; margin-top:.5rem; margin-bottom:0">
+    <input type="text" name="card_id" class="nfc-input" placeholder="Badge ID" style="margin:0; flex:1" required>
+    <button type="button" class="nfc-scan-btn secondary" style="display:none; width:auto; margin:0" onclick="startNFCScan(this)">📡 NFC</button>
+    <button type="submit" style="width:auto; margin:0">Add</button>
   </form>
 </div>
