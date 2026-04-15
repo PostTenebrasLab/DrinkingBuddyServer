@@ -13,6 +13,7 @@ def _stats_query(db, q='', category_ids=None, has_cat_filter=False,
                .join(TransactionItem, TransactionItem.element_id == Item.id)
                .outerjoin(Category, Item.category_id == Category.id)
                .filter(TransactionItem.canceled.isnot(True))
+               .filter(Item.id < 999)
                .group_by(Item.id))
     if q:
         query = query.filter(Item.name.ilike(f'%{q}%'))
@@ -37,6 +38,7 @@ def _stats_chart_data(db, q='', category_ids=None, has_cat_filter=False, date_fr
     query = (db.query(date_label, qty_col)
                .join(Item, TransactionItem.element_id == Item.id)
                .filter(TransactionItem.canceled.isnot(True))
+               .filter(Item.id < 999)
                .group_by('day').order_by('day'))
     if q:
         query = query.filter(Item.name.ilike(f'%{q}%'))
