@@ -47,7 +47,6 @@ __copyright__ = ""
 __licence__ = "GPL"
 __status__ = ""
 
-
 engine = create_engine(dbpath)
 
 Base.metadata.bind = engine
@@ -297,7 +296,7 @@ def getUser():
     """ Get user request
 
 
-    :return: JSON 
+    :return: JSON
     """
     dict_req = request.get_json()
 
@@ -365,7 +364,7 @@ def add():
 
 
 
-    :return: JSON 
+    :return: JSON
     """
     dict_req = request.get_json()
 

@@ -1,7 +1,7 @@
 from flask import redirect, render_template, request, url_for
 from sqlalchemy import or_
 
-from ..drinkingBuddyDB_declarative import User
+from ..drinkingBuddyDB_declarative import Card, User
 from .blueprint import _Session, admin_bp
 
 
@@ -43,8 +43,10 @@ def user_row(user_id):
 
 @admin_bp.route('/users/<int:user_id>/edit')
 def user_edit(user_id):
-    db = _Session()
-    return render_template('admin/user_form.html', user=db.get(User, user_id))
+    db    = _Session()
+    user  = db.get(User, user_id)
+    cards = db.query(Card).filter(Card.user_id == user_id).order_by(Card.id).all()
+    return render_template('admin/user_form.html', user=user, cards=cards)
 
 
 @admin_bp.route('/users/<int:user_id>', methods=['POST'])
@@ -71,3 +73,27 @@ def user_create():
     db.add(user)
     db.commit()
     return redirect(url_for('admin.users'), 303)
+
+
+def _cards_response(db, user_id):
+    user  = db.get(User, user_id)
+    cards = db.query(Card).filter(Card.user_id == user_id).order_by(Card.id).all()
+    return render_template('admin/user_cards.html', user=user, cards=cards)
+
+
+@admin_bp.route('/users/<int:user_id>/cards', methods=['POST'])
+def card_create(user_id):
+    db = _Session()
+    db.add(Card(id=int(request.form['card_id']), user_id=user_id))
+    db.commit()
+    return _cards_response(db, user_id)
+
+
+@admin_bp.route('/users/<int:user_id>/cards/<int:card_id>/delete', methods=['POST'])
+def card_delete(user_id, card_id):
+    db   = _Session()
+    card = db.get(Card, card_id)
+    if card and card.user_id == user_id:
+        db.delete(card)
+        db.commit()
+    return _cards_response(db, user_id)
