@@ -1,7 +1,6 @@
 import binascii
 import datetime
 import logging
-import time
 import urllib
 from collections import OrderedDict
 from http import HTTPStatus
@@ -33,6 +32,14 @@ app = Flask(__name__)
 app.config.from_prefixed_env()
 db.init_app(app)
 app.register_blueprint(admin_bp)
+
+
+def datetime_now() -> datetime.datetime:
+    return datetime.datetime.now(tz=datetime.UTC)
+
+
+def datetime_seconds(datetime: datetime.datetime) -> int:
+    return round(datetime.timestamp())
 
 
 def abort_unauthorized(message: str) -> Never:
@@ -129,7 +136,7 @@ def transact() -> JsonObject:
     if item.price > 0 and balance_new < 0:
         raise abort(HTTPStatus.PAYMENT_REQUIRED, 'Too poor!')
 
-    now = datetime.datetime.now()
+    now = datetime_now()
     user.balance = balance_new
     item.quantity -= 1
 
@@ -177,13 +184,13 @@ def sync() -> JsonObject:
     """
     terminal = get_terminal(Terminal.id)
     header = 'DrinkingBuddy'
-    now = round(time.time())
 
     items = db.query(Item, Item.id, Item.name, Item.price)
     items = items.join(Functionality, Functionality.category_id == Item.category_id)
     items = items.filter(Functionality.terminal_id == terminal.id, Item.quantity > 0)
     items = tuple(items)
 
+    now = datetime_seconds(datetime_now())
     return dict(
         Header=header,
         Products=[[i.id, i.name, f'{i.price/100:.2f}'] for i in items],
@@ -208,7 +215,7 @@ def gettime() -> JsonObject:
     terminal = get_terminal()
 
     header = 'DrinkingBuddy'
-    now = round(time.time())
+    now = datetime_seconds(datetime_now())
     return dict(
         Header=header,
         Melody='c1',
@@ -242,7 +249,7 @@ def get_user() -> JsonObject:
         message = [user.name, f'{100/100:.2f}']
         melody = 'a1c1a1c1a1c1a1c1'
 
-    now = round(time.time())
+    now = datetime_seconds(datetime_now())
     return dict(
         Melody=melody,
         Message=message,
@@ -275,6 +282,8 @@ def add() -> JsonObject:
     if request.json['Hash'] != req_hash:
         raise abort(HTTPStatus.BAD_REQUEST, {'DrinkingBuddy error': f'Hash error {req_hash}'})
 
+    now = datetime_now()
+
     users = db.query(User, User.id, User.type)
     users = users.join(Card, Card.user_id == User.id)
     users = users.filter(Card.id == int(badge, 16))
@@ -290,11 +299,11 @@ def add() -> JsonObject:
         item = db.query(Item).filter(item_filter).one()
         item.quantity += item_count
 
-        transaction = Transaction(date=datetime.datetime.now(), value=1, user=user)
+        transaction = Transaction(date=now, value=1, user=user)
         db.add(transaction)
 
         transaction_item = TransactionItem(
-            date=datetime.datetime.now(),
+            date=now,
             quantity=-item_count,
             price_per_item=item.price,
             canceled_date=None,
@@ -308,12 +317,12 @@ def add() -> JsonObject:
         melody = 'a1a1a1b1b1f1g1'
         message = ['Successfull transaction', 'Have a nice day']
 
-    now = round(time.time())
+    now = str(datetime_seconds(now))
     return dict(
         Melody=melody,
         Message=message,
-        Time=str(now),
-        Hash=compute_hash(terminal, melody, chain.from_iterable(message), str(now)),
+        Time=now,
+        Hash=compute_hash(terminal, melody, chain.from_iterable(message), now),
     )
 
 
@@ -345,6 +354,8 @@ def buy() -> JsonObject:
     user = db.query(User).join(Card, Card.user_id == User.id).filter(Card.id == int(badge, 16)).one()
     item = db.query(Item).filter(item_filter).one()
 
+    now = datetime_now()
+
     if item.quantity < 1 and product:
         melody = 'b2c3b2'
         message = ['ERROR', 'Not in stock']
@@ -357,11 +368,11 @@ def buy() -> JsonObject:
         item.quantity -= 1
         user.balance -= item.price
 
-        transaction = Transaction(date=datetime.datetime.now(), value=1, user=user)
+        transaction = Transaction(date=now, value=1, user=user)
         db.add(transaction)
 
         transaction_item = TransactionItem(
-            date=datetime.datetime.now(),
+            date=now,
             quantity=1,
             price_per_item=item.price,
             canceled_date=None,
@@ -376,12 +387,12 @@ def buy() -> JsonObject:
         message = ['Successfull transaction', item.name]
         item_price = item.price
 
-    now = round(time.time())
+    now = str(datetime_seconds(now))
     response = dict(
         Melody=melody,
         Message=message,
-        Time=str(now),
-        Hash=compute_hash(terminal, melody, chain.from_iterable(message), str(now)),
+        Time=now,
+        Hash=compute_hash(terminal, melody, chain.from_iterable(message), now),
     )
     if item_price is not None:
         response['ItemPrice'] = item_price
@@ -409,7 +420,7 @@ def get_balance() -> JsonObject:
         melody = 'a1c1a1c1a1c1a1c1'
         message = [user.name, f'{user.balance/100:.2f}']
 
-    now = round(time.time())
+    now = datetime_seconds(datetime_now())
     return dict(
         Melody=melody,
         Message=message,
@@ -452,7 +463,7 @@ def get_locker() -> JsonObject:
             melody = 'a1a1a1c1c1c1a1c1'
             message = [str(locker.lockername) for locker in lockers]
 
-    now = round(time.time())
+    now = datetime_seconds(datetime_now())
     return dict(
         Melody=melody,
         Message=message,
@@ -464,14 +475,15 @@ def get_locker() -> JsonObject:
 @app.route('/foodcount', methods=['GET'])
 def get_food() -> JsonObject:
     food_item_id = 5
-    now = round(time.time())
+    now = datetime_now()
 
     transactions = db.query(TransactionItem)
     transactions = transactions.filter(TransactionItem.element_id == food_item_id)
-    transactions = transactions.filter(TransactionItem.date >= datetime.date.today())
+    transactions = transactions.filter(TransactionItem.date >= now.today())
     transactions = transactions.filter(not TransactionItem.canceled)
     count = transactions.count()
 
+    now = datetime_seconds(now)
     return dict(
         Message=['Food bought today', count],
         Melody='a2',
@@ -528,11 +540,12 @@ def addcents() -> JsonObject:
     user = users.one()
     user.balance += cents_int
 
-    transaction = Transaction(date=datetime.datetime.now(), value=1, user=user)
+    now = datetime_now()
+    transaction = Transaction(date=now, value=1, user=user)
     db.add(transaction)
 
     transaction_item = TransactionItem(
-        date=datetime.datetime.now(),
+        date=now,
         quantity=cents_int,
         price_per_item=-1,
         canceled_date=None,
@@ -545,12 +558,12 @@ def addcents() -> JsonObject:
 
     melody = 'a1b1c1d1e1f1g1'
     message = ['Successfull add cents', str(cents)]
-    now = round(time.time())
+    now = str(datetime_seconds(now))
     return dict(
         Melody=melody,
         Message=message,
-        Time=str(now),
-        Hash=compute_hash(terminal, melody, chain.from_iterable(message), str(now)),
+        Time=now,
+        Hash=compute_hash(terminal, melody, chain.from_iterable(message), now),
     )
 
 
