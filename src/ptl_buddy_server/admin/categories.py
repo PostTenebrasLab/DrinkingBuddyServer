@@ -1,6 +1,6 @@
 from flask import render_template, request
 
-from ..drinkingBuddyDB_declarative import Category
+from ..models import Category
 from .blueprint import _Session, admin_bp
 
 

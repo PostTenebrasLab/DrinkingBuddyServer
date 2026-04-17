@@ -1,7 +1,7 @@
 from flask import render_template
 from sqlalchemy import func
 
-from ..drinkingBuddyDB_declarative import Item, Transaction, User
+from ..models import Item, Transaction, User
 from .blueprint import _Session, admin_bp
 
 

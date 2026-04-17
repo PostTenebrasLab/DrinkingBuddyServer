@@ -1,7 +1,7 @@
 from flask import render_template, request
 from sqlalchemy import false as sa_false, func
 
-from ..drinkingBuddyDB_declarative import Category, Item, TransactionItem
+from ..models import Category, Item, TransactionItem
 from .blueprint import _Session, admin_bp
 
 

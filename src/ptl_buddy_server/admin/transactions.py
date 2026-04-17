@@ -1,7 +1,7 @@
 from flask import render_template, request
 from sqlalchemy.orm import contains_eager, joinedload
 
-from ..drinkingBuddyDB_declarative import Transaction, User
+from ..models import Transaction, User
 from .blueprint import _Session, admin_bp
 
 _PER_PAGE = 50

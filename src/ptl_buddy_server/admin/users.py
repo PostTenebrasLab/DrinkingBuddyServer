@@ -1,7 +1,7 @@
 from flask import redirect, render_template, request, url_for
 from sqlalchemy import or_
 
-from ..drinkingBuddyDB_declarative import Card, User
+from ..models import Card, User
 from .blueprint import _Session, admin_bp
 
 
