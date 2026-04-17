@@ -45,9 +45,9 @@ class Item(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer)
-    minquantity: Mapped[int] = mapped_column(Integer)
+    minquantity: Mapped[int | None] = mapped_column(Integer)
     price: Mapped[int] = mapped_column(Integer)
-    barcode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    barcode: Mapped[str] = mapped_column(String(32), nullable=True)
     pictureURL: Mapped[str | None] = mapped_column(String(512), nullable=True)  # noqa: N815 (mixedCase)
     category_id: Mapped[int] = mapped_column(ForeignKey('categories.id'))
     category: Mapped[Category] = relationship(back_populates='items')
@@ -58,7 +58,7 @@ class User(Base):
     __tablename__ = 'users'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str | None] = mapped_column(String(50))
+    name: Mapped[str] = mapped_column(String(50))
     balance: Mapped[int] = mapped_column(Integer)
     type: Mapped[int] = mapped_column(Integer)
     ldap_user: Mapped[str | None] = mapped_column(String(50))
@@ -79,7 +79,7 @@ class Locker(Base):
     __tablename__ = 'locker'
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    lockername: Mapped[str | None] = mapped_column(String(2))
+    lockername: Mapped[str] = mapped_column(String(2))
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     user: Mapped[User] = relationship(back_populates='lockers')
 
