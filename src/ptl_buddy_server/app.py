@@ -56,7 +56,7 @@ def basic_auth() -> Terminal:
 
     username = authorization.username
     password = authorization.password
-    terminals = db.query(Terminal, Terminal.id)
+    terminals = db.session.query(Terminal, Terminal.id)
     terminals = terminals.filter(Terminal.name == username, Terminal.key == password)
     terminal = terminals.one_or_none()
     if terminal is None:
@@ -84,7 +84,7 @@ def search() -> JsonObject:
 
     query_str = request.args['q']
 
-    item = db.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == query_str).one_or_none()
+    item = db.session.query(Item, Item.id, Item.name, Item.price).filter(Item.barcode == query_str).one_or_none()
     if item is not None:
         return OrderedDict(
             type='Item',
@@ -98,7 +98,7 @@ def search() -> JsonObject:
     query_int = int.from_bytes(query_bytes)
 
     try:
-        users = db.query(User, User.id, User.name, User.balance)
+        users = db.session.query(User, User.id, User.name, User.balance)
         users = users.join(Card, User.id == Card.user_id)
         users = users.filter(Card.id == query_int)
         user = users.one_or_none()
@@ -129,8 +129,8 @@ def transact() -> JsonObject:
     user_id = int.from_bytes(query[b'user'][0])
     item_id = int.from_bytes(query[b'item'][0])
 
-    user = db.query(User).filter(User.id == user_id).with_for_update().one()
-    item = db.query(Item).filter(Item.id == item_id).with_for_update().one()
+    user = db.session.query(User).filter(User.id == user_id).with_for_update().one()
+    item = db.session.query(Item).filter(Item.id == item_id).with_for_update().one()
 
     balance_new = user.balance - item.price
     if item.price > 0 and balance_new < 0:
@@ -141,7 +141,7 @@ def transact() -> JsonObject:
     item.quantity -= 1
 
     transaction = Transaction(user=user, date=now, value=1)
-    db.add(transaction)
+    db.session.add(transaction)
 
     transaction_item = TransactionItem(
         transaction=transaction,
@@ -151,9 +151,9 @@ def transact() -> JsonObject:
         canceled_date=None,
         element_id=item.id,
     )
-    db.add(transaction_item)
+    db.session.add(transaction_item)
 
-    db.commit()
+    db.session.commit()
 
     return OrderedDict(
         id=urllib.parse.quote_from_bytes(int_to_bytes(user.id)),
@@ -164,7 +164,7 @@ def transact() -> JsonObject:
 
 def get_terminal(*columns: Column) -> Terminal:
     terminal_id = request.json['Tid']
-    return db.query(Terminal, Terminal.key, *columns).filter(Terminal.id == terminal_id).one()
+    return db.session.query(Terminal, Terminal.key, *columns).filter(Terminal.id == terminal_id).one()
 
 
 def compute_hash(terminal: Terminal, *strings: Iterable[str]) -> str:
@@ -185,7 +185,7 @@ def sync() -> JsonObject:
     terminal = get_terminal(Terminal.id)
     header = 'DrinkingBuddy'
 
-    items = db.query(Item, Item.id, Item.name, Item.price)
+    items = db.session.query(Item, Item.id, Item.name, Item.price)
     items = items.join(Functionality, Functionality.category_id == Item.category_id)
     items = items.filter(Functionality.terminal_id == terminal.id, Item.quantity > 0)
     items = tuple(items)
@@ -237,7 +237,7 @@ def get_user() -> JsonObject:
     hash_should = compute_hash(terminal, badge, str(request.json.get('Time', 0)))
     logger.debug('/user %s, %s', request.json['Hash'], hash_should)
 
-    users = db.query(User, User.name)
+    users = db.session.query(User, User.name)
     users = users.join(Card, User.id == Card.user_id)
     users = users.filter(Card.id == int(badge, 16), User.type == 1)
     user = users.one_or_none()
@@ -284,7 +284,7 @@ def add() -> JsonObject:
 
     now = datetime_now()
 
-    users = db.query(User, User.id, User.type)
+    users = db.session.query(User, User.id, User.type)
     users = users.join(Card, Card.user_id == User.id)
     users = users.filter(Card.id == int(badge, 16))
     user = users.one()
@@ -296,11 +296,11 @@ def add() -> JsonObject:
         item_count = request.json.get('Item_count')
         item_count = int(item_count) if item_count else 1
 
-        item = db.query(Item).filter(item_filter).one()
+        item = db.session.query(Item).filter(item_filter).one()
         item.quantity += item_count
 
         transaction = Transaction(date=now, value=1, user=user)
-        db.add(transaction)
+        db.session.add(transaction)
 
         transaction_item = TransactionItem(
             date=now,
@@ -310,9 +310,9 @@ def add() -> JsonObject:
             element_id=item.id,
             transaction=transaction,
         )
-        db.add(transaction_item)
+        db.session.add(transaction_item)
 
-        db.commit()
+        db.session.commit()
 
         melody = 'a1a1a1b1b1f1g1'
         message = ['Successfull transaction', 'Have a nice day']
@@ -351,8 +351,8 @@ def buy() -> JsonObject:
     hash_should = compute_hash(terminal, badge, str(item_selector), str(request.json['Time']))
     logger.debug('/buy %s, %s', request.json['Hash'], hash_should)
 
-    user = db.query(User).join(Card, Card.user_id == User.id).filter(Card.id == int(badge, 16)).one()
-    item = db.query(Item).filter(item_filter).one()
+    user = db.session.query(User).join(Card, Card.user_id == User.id).filter(Card.id == int(badge, 16)).one()
+    item = db.session.query(Item).filter(item_filter).one()
 
     now = datetime_now()
 
@@ -369,7 +369,7 @@ def buy() -> JsonObject:
         user.balance -= item.price
 
         transaction = Transaction(date=now, value=1, user=user)
-        db.add(transaction)
+        db.session.add(transaction)
 
         transaction_item = TransactionItem(
             date=now,
@@ -379,9 +379,9 @@ def buy() -> JsonObject:
             element_id=item.id,
             transaction=transaction,
         )
-        db.add(transaction_item)
+        db.session.add(transaction_item)
 
-        db.commit()
+        db.session.commit()
 
         melody = 'a1b1c1d1e1f1g1'
         message = ['Successfull transaction', item.name]
@@ -408,7 +408,7 @@ def get_balance() -> JsonObject:
     hash_should = compute_hash(terminal, badge, str(request.json['Time']))
     logger.debug('/balance %s, %s', request.json['Hash'], hash_should)
 
-    users = db.query(User, User.name, User.balance)
+    users = db.session.query(User, User.name, User.balance)
     users = users.join(Card, User.id == Card.user_id)
     users = users.filter(Card.id == int(badge, 16))
     user = users.one_or_none()
@@ -434,7 +434,7 @@ def total() -> list[str]:
     date_from = request.args['from']
     date_to = request.args['to']
 
-    query = db.query(
+    query = db.session.query(
         func.sum(Transaction.value).label('sum'),
         func.count(Transaction.id).label('count'),
     ).filter(Transaction.date.between(date_from, date_to))
@@ -452,7 +452,7 @@ def get_locker() -> JsonObject:
         melody = 'c5'
         message = ['ERROR', 'HASH DOES NOT MATCH']
     else:
-        lockers = db.query(Locker, Locker.lockername)
+        lockers = db.session.query(Locker, Locker.lockername)
         lockers = lockers.join(User, Locker.user_id == User.id)
         lockers = lockers.join(Card, User.id == Card.user_id)
         lockers = lockers.filter(Card.id == int(badge, 16))
@@ -477,7 +477,7 @@ def get_food() -> JsonObject:
     food_item_id = 5
     now = datetime_now()
 
-    transactions = db.query(TransactionItem)
+    transactions = db.session.query(TransactionItem)
     transactions = transactions.filter(TransactionItem.element_id == food_item_id)
     transactions = transactions.filter(TransactionItem.date >= now.today())
     transactions = transactions.filter(not TransactionItem.canceled)
@@ -494,19 +494,19 @@ def get_food() -> JsonObject:
 
 @app.route('/beverages', methods=['GET'])
 def get_beverages() -> list[JsonObject]:
-    return [serialize(i) for i in db.query(Item).all()]
+    return [serialize(i) for i in db.session.query(Item).all()]
 
 
 @app.route('/beverages/<barcode>', methods=['GET'])
 def get_beverage_barcode(barcode: str) -> JsonObject:
-    return serialize(db.query(Item).filter(Item.barcode == barcode).one())
+    return serialize(db.session.query(Item).filter(Item.barcode == barcode).one())
 
 
 @app.route('/beverages', methods=['POST'])
 def post_beverages() -> JsonObject:
     beverage = Item(name=request.json['name'], quantity=request.json['quantity'])
-    db.add(beverage)
-    db.commit()
+    db.session.add(beverage)
+    db.session.commit()
     return serialize(beverage)
 
 
@@ -534,7 +534,7 @@ def addcents() -> JsonObject:
     if sent_hash != req_hash:
         raise abort(HTTPStatus.BAD_REQUEST, {'DrinkingBuddy error': f'Hash error {req_hash}  {sent_hash}'})
 
-    users = db.query(User)
+    users = db.session.query(User)
     users = users.join(Card, Card.user_id == User.id)
     users = users.filter(Card.id == int(badge, 16))
     user = users.one()
@@ -542,7 +542,7 @@ def addcents() -> JsonObject:
 
     now = datetime_now()
     transaction = Transaction(date=now, value=1, user=user)
-    db.add(transaction)
+    db.session.add(transaction)
 
     transaction_item = TransactionItem(
         date=now,
@@ -552,9 +552,9 @@ def addcents() -> JsonObject:
         element_id=1000,
         transaction=transaction,
     )
-    db.add(transaction_item)
+    db.session.add(transaction_item)
 
-    db.commit()
+    db.session.commit()
 
     melody = 'a1b1c1d1e1f1g1'
     message = ['Successfull add cents', str(cents)]
