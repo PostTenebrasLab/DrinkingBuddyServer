@@ -20,8 +20,8 @@ All configuration is via environment variables. Copy `.env.example` to `.env` an
 
 | Variable | Description | Example |
 |---|---|---|
-| `DB_PATH` | SQLAlchemy DB URL | `sqlite:////data/drinkingBuddy.db` |
-| `SECRET_KEY` | Flask session secret | `python -c "import secrets; print(secrets.token_hex())"` |
+| `FLASK_SQLALCHEMY_ENGINES__default` | SQLAlchemy DB URL | `sqlite:////data/drinkingBuddy.db` |
+| `FLASK_SECRET_KEY` | Flask session secret | `python -c "import secrets; print(secrets.token_hex())"` |
 | `LDAP_URL` | LDAP server URL | `ldap://freeipa.lan.example.ch` |
 | `LDAP_USER_SEARCH_BASE` | DN to search users under | `cn=users,cn=accounts,dc=example,dc=ch` |
 | `LDAP_GROUP_SEARCH_BASE` | DN to search groups under | `cn=groups,cn=accounts,dc=example,dc=ch` |
