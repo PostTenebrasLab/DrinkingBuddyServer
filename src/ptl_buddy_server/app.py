@@ -480,7 +480,7 @@ def get_food() -> JsonObject:
     transactions = db.session.query(TransactionItem)
     transactions = transactions.filter(TransactionItem.element_id == food_item_id)
     transactions = transactions.filter(TransactionItem.date >= now.today())
-    transactions = transactions.filter(not TransactionItem.canceled)
+    transactions = transactions.filter(TransactionItem.canceled_date != None)
     count = transactions.count()
 
     now = datetime_seconds(now)

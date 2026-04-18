@@ -13,7 +13,7 @@ def dashboard():
     transaction_count = db.query(Transaction).count()
     total_balance     = db.query(func.sum(User.balance)).scalar() or 0
     low_stock = (db.query(Item)
-                 .filter(Item.id < 999, Item.minquantity.isnot(None), Item.minquantity >= 0, Item.quantity <= Item.minquantity)
+                 .filter(Item.id < 999, Item.minquantity != None, Item.minquantity >= 0, Item.quantity <= Item.minquantity)
                  .order_by(Item.name)
                  .all())
     return render_template('admin/dashboard.html',

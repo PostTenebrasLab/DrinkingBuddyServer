@@ -98,15 +98,11 @@ class Transaction(Base):
 
 class TransactionItem(Base):
     __tablename__ = 'transaction_items'
-    __table_args__ = (
-        CheckConstraint('canceled IN (0, 1)'),
-    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(DateTime)
     quantity: Mapped[int] = mapped_column(Integer)
     price_per_item: Mapped[int] = mapped_column(Integer)
-    canceled: Mapped[bool] = mapped_column(Boolean, default=False)
     canceled_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     element_id: Mapped[int] = mapped_column(ForeignKey('items.id'))
     transaction_id: Mapped[int] = mapped_column(ForeignKey('transactions.id'))

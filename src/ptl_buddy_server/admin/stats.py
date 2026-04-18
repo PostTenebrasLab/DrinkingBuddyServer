@@ -12,7 +12,7 @@ def _stats_query(db, q='', category_ids=None, has_cat_filter=False,
     query = (db.query(Item, qty_col, revenue_col)
                .join(TransactionItem, TransactionItem.element_id == Item.id)
                .outerjoin(Category, Item.category_id == Category.id)
-               .filter(TransactionItem.canceled.isnot(True))
+               .filter(TransactionItem.canceled_date != None)
                .filter(Item.id < 999)
                .group_by(Item.id))
     if q:
@@ -37,7 +37,7 @@ def _stats_chart_data(db, q='', category_ids=None, has_cat_filter=False, date_fr
     qty_col    = func.sum(TransactionItem.quantity).label('total_qty')
     query = (db.query(date_label, qty_col)
                .join(Item, TransactionItem.element_id == Item.id)
-               .filter(TransactionItem.canceled.isnot(True))
+               .filter(TransactionItem.canceled_date != None)
                .filter(Item.id < 999)
                .group_by('day').order_by('day'))
     if q:
