@@ -3,6 +3,7 @@ from datetime import datetime  # noqa: TC003 (if typing.TYPE_CHECKING:)
 from flask_sqlalchemy_lite import SQLAlchemy
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.schema import CheckConstraint
 
 db = SQLAlchemy()
 
@@ -97,6 +98,9 @@ class Transaction(Base):
 
 class TransactionItem(Base):
     __tablename__ = 'transaction_items'
+    __table_args__ = (
+        CheckConstraint('canceled IN (0, 1)'),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(DateTime)
