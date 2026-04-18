@@ -22,7 +22,6 @@
         <th class="hide-mobile">#</th>
         <th><span class="sort-btn active" data-sort="date"  onclick="setSort(this)">Date  <span class="sort-arrow">↓</span></span></th>
         <th><span class="sort-btn"        data-sort="user"  onclick="setSort(this)">User  <span class="sort-arrow">↕</span></span></th>
-        <th><span class="sort-btn"        data-sort="value" onclick="setSort(this)">Value <span class="sort-arrow">↕</span></span></th>
       </tr>
     </thead>
     <tbody id="txn-tbody">
@@ -31,7 +30,6 @@
         <td class="hide-mobile text-muted">{{ txn.id }}</td>
         <td>{{ txn.date.strftime('%Y-%m-%d %H:%M') if txn.date else '—' }}</td>
         <td>{{ txn.user.name if txn.user else '—' }}</td>
-        <td>{{ txn.value }}</td>
       </tr>
       {% else %}
       <tr><td colspan="4" style="text-align:center" class="text-muted">No transactions found.</td></tr>
