@@ -52,7 +52,7 @@ class Item(Base):
     pictureURL: Mapped[str | None] = mapped_column(String(512), nullable=True)  # noqa: N815 (mixedCase)
     category_id: Mapped[int] = mapped_column(ForeignKey('categories.id'))
     category: Mapped[Category] = relationship(back_populates='items')
-    transaction_items: Mapped[list[TransactionItem]] = relationship(back_populates='element')
+    transactions: Mapped[list[Transaction]] = relationship(back_populates='element')
 
 
 class User(Base):
@@ -90,21 +90,10 @@ class Transaction(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     date: Mapped[datetime] = mapped_column(DateTime)
-    value: Mapped[int] = mapped_column(Integer)
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
     user: Mapped[User] = relationship(back_populates='transactions')
-    items: Mapped[list[TransactionItem]] = relationship(back_populates='transaction')
-
-
-class TransactionItem(Base):
-    __tablename__ = 'transaction_items'
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    date: Mapped[datetime] = mapped_column(DateTime)
     quantity: Mapped[int] = mapped_column(Integer)
     price_per_item: Mapped[int] = mapped_column(Integer)
     canceled_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     element_id: Mapped[int] = mapped_column(ForeignKey('items.id'))
-    transaction_id: Mapped[int] = mapped_column(ForeignKey('transactions.id'))
-    element: Mapped[Item] = relationship(back_populates='transaction_items')
-    transaction: Mapped[Transaction] = relationship(back_populates='items')
+    element: Mapped[Item] = relationship(back_populates='transactions')

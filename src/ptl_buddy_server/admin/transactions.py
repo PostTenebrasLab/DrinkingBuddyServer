@@ -40,7 +40,6 @@ def transactions_rows():
     sort_col = {
         'date':  Transaction.date,
         'user':  User.name,
-        'value': Transaction.value,
     }.get(sort, Transaction.date)
 
     if direction == 'desc':

@@ -13,7 +13,7 @@ from sqlalchemy.orm import class_mapper
 from sqlalchemy.sql import func
 
 from .admin import admin_bp
-from .models import Card, Functionality, Item, Locker, Terminal, Transaction, TransactionItem, User, db
+from .models import Card, Functionality, Item, Locker, Terminal, Transaction, User, db
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -140,18 +140,15 @@ def transact() -> JsonObject:
     user.balance = balance_new
     item.quantity -= 1
 
-    transaction = Transaction(user=user, date=now, value=1)
-    db.session.add(transaction)
-
-    transaction_item = TransactionItem(
-        transaction=transaction,
+    transaction = Transaction(
+        user=user,
         date=now,
         quantity=1,
         price_per_item=item.price,
         canceled_date=None,
         element_id=item.id,
     )
-    db.session.add(transaction_item)
+    db.session.add(transaction)
 
     db.session.commit()
 
@@ -299,18 +296,15 @@ def add() -> JsonObject:
         item = db.session.query(Item).filter(item_filter).one()
         item.quantity += item_count
 
-        transaction = Transaction(date=now, value=1, user=user)
-        db.session.add(transaction)
-
-        transaction_item = TransactionItem(
+        transaction = Transaction(
             date=now,
+            user=user,
             quantity=-item_count,
             price_per_item=item.price,
             canceled_date=None,
             element_id=item.id,
-            transaction=transaction,
         )
-        db.session.add(transaction_item)
+        db.session.add(transaction)
 
         db.session.commit()
 
@@ -368,18 +362,15 @@ def buy() -> JsonObject:
         item.quantity -= 1
         user.balance -= item.price
 
-        transaction = Transaction(date=now, value=1, user=user)
-        db.session.add(transaction)
-
-        transaction_item = TransactionItem(
+        transaction = Transaction(
             date=now,
+            user=user,
             quantity=1,
             price_per_item=item.price,
             canceled_date=None,
             element_id=item.id,
-            transaction=transaction,
         )
-        db.session.add(transaction_item)
+        db.session.add(transaction)
 
         db.session.commit()
 
@@ -477,10 +468,10 @@ def get_food() -> JsonObject:
     food_item_id = 5
     now = datetime_now()
 
-    transactions = db.session.query(TransactionItem)
-    transactions = transactions.filter(TransactionItem.element_id == food_item_id)
-    transactions = transactions.filter(TransactionItem.date >= now.today())
-    transactions = transactions.filter(TransactionItem.canceled_date != None)
+    transactions = db.session.query(Transaction)
+    transactions = transactions.filter(Transaction.element_id == food_item_id)
+    transactions = transactions.filter(Transaction.date >= now.today())
+    transactions = transactions.filter(Transaction.canceled_date != None)
     count = transactions.count()
 
     now = datetime_seconds(now)
@@ -541,18 +532,15 @@ def addcents() -> JsonObject:
     user.balance += cents_int
 
     now = datetime_now()
-    transaction = Transaction(date=now, value=1, user=user)
-    db.session.add(transaction)
-
-    transaction_item = TransactionItem(
+    transaction = Transaction(
         date=now,
+        user=user,
         quantity=cents_int,
         price_per_item=-1,
         canceled_date=None,
         element_id=1000,
-        transaction=transaction,
     )
-    db.session.add(transaction_item)
+    db.session.add(transaction)
 
     db.session.commit()
 
