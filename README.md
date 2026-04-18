@@ -11,7 +11,7 @@ uv sync
 ## Running
 
 ```sh
-uv run python -m DrinkingBuddyServer
+uv run flask --app ptl_buddy_server.app run --debug
 ```
 
 ## Configuration
@@ -35,7 +35,7 @@ Available at `/admin`. Login requires membership in the `admins` LDAP group.
 ```sh
 podman build -f Containerfile -t drinkingbuddyserver .
 mkdir -p ./data
-podman run -p 5000:5000 --env-file .env -v ./data:/data drinkingbuddyserver
+podman run -p 8000:8000 --env-file .env -v ./data:/data drinkingbuddyserver
 ```
 
 The `/data` directory is where the SQLite database is stored. Mount a persistent directory there.
