@@ -73,8 +73,11 @@ def item_update(item_id):
 
 @admin_bp.route('/items/<int:item_id>/delete', methods=['POST'])
 def item_delete(item_id):
-    db = _Session()
-    db.delete(db.get(Item, item_id))
+    db   = _Session()
+    item = db.get(Item, item_id)
+    if item is None:
+        abort(404)
+    db.delete(item)
     db.commit()
     return ''
 
