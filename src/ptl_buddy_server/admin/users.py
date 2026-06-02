@@ -86,7 +86,11 @@ def _cards_response(db, user_id):
 @admin_bp.route('/users/<int:user_id>/cards', methods=['POST'])
 def card_create(user_id):
     db = _Session()
-    db.add(Card(id=int(request.form['card_id']), user_id=user_id))
+    try:
+        card_id = int(request.form['card_id'])
+    except (ValueError, KeyError):
+        abort(400)
+    db.add(Card(id=card_id, user_id=user_id))
     db.commit()
     return _cards_response(db, user_id)
 
