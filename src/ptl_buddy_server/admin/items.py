@@ -1,4 +1,4 @@
-from flask import redirect, render_template, request, url_for
+from flask import abort, redirect, render_template, request, url_for
 from sqlalchemy import false as sa_false, or_
 
 from ..models import Category, Item
@@ -59,6 +59,8 @@ def item_edit(item_id):
 def item_update(item_id):
     db   = _Session()
     item = db.get(Item, item_id)
+    if item is None:
+        abort(404)
     item.name        = request.form['name']
     item.quantity    = int(request.form['quantity'])
     item.minquantity = int(request.form['minquantity'])
