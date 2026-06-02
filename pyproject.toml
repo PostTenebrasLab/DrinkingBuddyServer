@@ -13,8 +13,12 @@ dependencies = [
 [dependency-groups]
 dev = [
 	"python-dotenv<2",
+	"pytest<9",
 	"ruff<0.16",
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [project.scripts]
 ptl-buddy-server = "ptl_buddy_server.prod:application.run"
