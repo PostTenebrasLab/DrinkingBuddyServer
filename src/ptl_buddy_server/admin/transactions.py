@@ -1,4 +1,4 @@
-from flask import render_template, request
+from flask import abort, render_template, request
 from sqlalchemy.orm import contains_eager, joinedload
 
 from ..models import Transaction, User
@@ -7,10 +7,17 @@ from .blueprint import _Session, admin_bp
 _PER_PAGE = 50
 
 
+def _parse_page():
+    try:
+        return max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        abort(400)
+
+
 @admin_bp.route('/transactions')
 def transactions():
     db       = _Session()
-    page     = max(1, int(request.args.get('page', 1)))
+    page     = _parse_page()
     total    = db.query(Transaction).count()
     txns     = (db.query(Transaction)
                 .options(joinedload(Transaction.user))
@@ -28,7 +35,7 @@ def transactions_rows():
     q         = request.args.get('q', '').strip()
     sort      = request.args.get('sort', 'date')
     direction = request.args.get('dir', 'desc')
-    page      = max(1, int(request.args.get('page', 1)))
+    page      = _parse_page()
 
     query = (db.query(Transaction)
              .outerjoin(User, Transaction.user_id == User.id)
