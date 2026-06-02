@@ -1,4 +1,3 @@
-import binascii
 import datetime
 import logging
 import urllib
@@ -167,7 +166,7 @@ def get_terminal(*columns: Column) -> Terminal:
 def compute_hash(terminal: Terminal, *strings: Iterable[str]) -> str:
     hasher = siphash.SipHash_2_4(terminal.key.encode())
     for i in chain.from_iterable(strings):
-        hasher.update(binascii.a2b_qp(i))
+        hasher.update(i.encode())
     return f'{hasher.hash():X}'.zfill(16)
 
 
