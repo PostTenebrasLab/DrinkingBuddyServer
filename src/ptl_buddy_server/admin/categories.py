@@ -30,8 +30,11 @@ def category_update(category_id):
 
 @admin_bp.route('/categories/<int:category_id>/delete', methods=['POST'])
 def category_delete(category_id):
-    db = _Session()
-    db.delete(db.get(Category, category_id))
+    db  = _Session()
+    cat = db.get(Category, category_id)
+    if cat is None:
+        abort(404)
+    db.delete(cat)
     db.commit()
     return ''
 
