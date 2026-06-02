@@ -1,4 +1,4 @@
-from flask import render_template, request
+from flask import abort, render_template, request
 
 from ..models import Category
 from .blueprint import _Session, admin_bp
@@ -21,6 +21,8 @@ def category_edit(category_id):
 def category_update(category_id):
     db       = _Session()
     category = db.get(Category, category_id)
+    if category is None:
+        abort(404)
     category.name = request.form['name']
     db.commit()
     return render_template('admin/category_row.html', category=category)
