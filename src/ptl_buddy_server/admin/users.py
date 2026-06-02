@@ -1,4 +1,4 @@
-from flask import redirect, render_template, request, url_for
+from flask import abort, redirect, render_template, request, url_for
 from sqlalchemy import or_
 
 from ..models import Card, User
@@ -53,6 +53,8 @@ def user_edit(user_id):
 def user_update(user_id):
     db   = _Session()
     user = db.get(User, user_id)
+    if user is None:
+        abort(404)
     user.name      = request.form['name']
     user.balance   = round(float(request.form['balance']) * 100)
     user.ldap_user = request.form.get('ldap_user') or None
